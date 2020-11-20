@@ -2,11 +2,6 @@
 
 #include "servermanager.h"
 
-// remove
-#include <iostream>
-#include <stdio.h>
-using namespace std;
-
 void setValues(int argc, char **argv, int &threadCount, bool &redundancy, char *&address, int &port, int *wasFound)
 {
 	for (int i = 1; i < argc; i++)
@@ -70,7 +65,7 @@ int main(int argc, char **argv)
 		int wasFound[] = {1, 0, 0, 0, 0, 0};
 		setValues(argc, argv, threadCount, redundancy, address, port, wasFound);
 	}
-	
+
 	ServerManager serverManager;
 	serverManager.Setup(address, port);
 	return 0;

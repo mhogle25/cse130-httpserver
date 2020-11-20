@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 		int wasFound[] = {1, 0, 0, 0, 0, 0};
 		setValues(argc, argv, threadCount, redundancy, address, port, wasFound);
 	}
-
+	
 	ServerManager serverManager;
 	serverManager.Setup(address, port);
 	return 0;

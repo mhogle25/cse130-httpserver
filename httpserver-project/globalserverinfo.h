@@ -10,21 +10,28 @@
 #include <err.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <vector>
 
 #include "string.h"
 
+using namespace std;
+
 class GlobalServerInfo {
 private:
-	struct ServerInfo {
+	struct MutexInfo {
 		char* filename;
-		bool isUsing;
+		pthread_mutex_t mutex;
 	};
 
-	static ServerInfo* serverInfos;
-	static int serverInfosSize;
+	static vector<MutexInfo> mutexInfos;
+	static int mutexInfosSize;
 public:
-	static void InitializeServerInfos(int);
-	static bool FileBeingUsed(char*);
+	~GlobalServerInfo();
+	static bool AddMutexInfo(char*);
+	static pthread_mutex_t GetFileMutex(char*);
+	static bool MutexInfoExists(char*);
+	static void RemoveMutexInfo(char*);
 };
 
 #endif

@@ -24,7 +24,7 @@ private:
 public:
 	ServerManager();
 	~ServerManager();
-	void Setup(char*, unsigned short);
+	void Setup(char*, unsigned short, bool);
 };
 
 #endif

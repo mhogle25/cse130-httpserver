@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 
+#include "globalserverinfo.h"
+
 #define SIZE 32768
 
 class HTTPParse {

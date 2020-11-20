@@ -12,6 +12,7 @@
 #include <fcntl.h>
 
 #include "httpparse.h"
+#include "globalserverinfo.h"
 
 class ServerManager {
 private:

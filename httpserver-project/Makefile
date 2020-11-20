@@ -1,5 +1,5 @@
-httpserver: main.o servermanager.o httpparse.o globalserverinfo.o
-	g++ main.o servermanager.o httpparse.o globalserverinfo.o -o httpserver
+httpserver: main.o servermanager.o httpparse.o globalserverinfo.o serverconnection.o
+	g++ main.o servermanager.o httpparse.o globalserverinfo.o serverconnection.o -o httpserver
 
 main.o: main.cpp
 	g++ -c -pthread main.cpp
@@ -12,6 +12,9 @@ httpparse.o: httpparse.cpp httpparse.h
 
 globalserverinfo.o: globalserverinfo.cpp globalserverinfo.h
 	g++ -c -pthread globalserverinfo.cpp
+
+serverconnection.o: serverconnection.cpp serverconnection.h
+	g++ -c -pthread serverconnection.cpp
 
 target: dependencies
 	action

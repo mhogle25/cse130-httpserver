@@ -27,7 +27,6 @@ private:
 	static vector<MutexInfo> mutexInfos;
 	static int mutexInfosSize;
 public:
-	~GlobalServerInfo();
 	static bool AddMutexInfo(char*);
 	static pthread_mutex_t GetFileMutex(char*);
 	static bool MutexInfoExists(char*);

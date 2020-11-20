@@ -1,29 +1,21 @@
 #include "globalserverinfo.h"
 
-GlobalServerInfo::~GlobalServerInfo() {
-	delete mutexInfos;
-}
-
-int GlobalServerInfo::mutexInfosSize { 
+int GlobalServerInfo::mutexInfosSize{
 	0
 };
 
 vector<GlobalServerInfo::MutexInfo> GlobalServerInfo::mutexInfos;
 
-vector<GlobalServerInfo::MutexInfo>* GlobalServerInfo::mutexInfos {
-	new vector<MutexInfo>()
-};
-
 bool GlobalServerInfo::AddMutexInfo(char* filename) {
 	if (MutexInfoExists(filename)) {
 		return false;
-	}	
-	
+	}
+
 	MutexInfo mutexInfo;
 	mutexInfo.filename = filename;
 	mutexInfos.push_back(mutexInfo);
 	mutexInfosSize++;
-	
+
 	return true;
 }
 
@@ -33,7 +25,7 @@ pthread_mutex_t GlobalServerInfo::GetFileMutex(char* f) {
 			return mutexInfos[i].mutex;
 		}
 	}
-	
+
 	return NULL;
 }
 
@@ -43,7 +35,7 @@ bool GlobalServerInfo::MutexInfoExists(char* f) {
 			return true;
 		}
 	}
-	
+
 	return false;
 }
 

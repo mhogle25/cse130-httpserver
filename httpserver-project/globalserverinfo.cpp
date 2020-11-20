@@ -19,10 +19,10 @@ bool GlobalServerInfo::AddMutexInfo(char* filename) {
 	return true;
 }
 
-pthread_mutex_t GlobalServerInfo::GetFileMutex(char* f) {
+pthread_mutex_t* GlobalServerInfo::GetFileMutex(char* f) {
 	for (int i = 0; i < mutexInfosSize; i++) {
 		if (strcmp(mutexInfos[i].filename, f) == 0) {
-			return mutexInfos[i].mutex;
+			return &mutexInfos[i].mutex;
 		}
 	}
 

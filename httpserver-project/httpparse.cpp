@@ -119,7 +119,9 @@ int HTTPParse::ParseRequestBody(char* r) {
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 		// return 500 if this is false?
 	}
+	std::cout << "outside mutex lock - put" << std::endl;
 	pthread_mutex_lock(mutx);
+	std::cout << "inside mutex - put" << std::endl;
 		
 	if (contentLength > requestLength) {
 		//ERROR, content length is bigger than body, return error code

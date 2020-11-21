@@ -1,8 +1,6 @@
 #include "globalserverinfo.h"
 
-int GlobalServerInfo::mutexInfosSize{
-	0
-};
+int GlobalServerInfo::mutexInfosSize = 0;
 
 vector<GlobalServerInfo::MutexInfo> GlobalServerInfo::mutexInfos;
 

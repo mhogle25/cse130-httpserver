@@ -128,7 +128,7 @@ int HTTPParse::GetRequestType() {
 
 int HTTPParse::PutAction() {
 	std::cout << "inside normal put" << std::endl;
-	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC);
+	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
 	
 	if (fd < 0) {
 		warn("%s", filename);

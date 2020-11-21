@@ -18,9 +18,7 @@
 class ServerManager {
 private:
 	int listen_fd;
-	int comm_fd;
-	
-	char* GenerateMessage(int, int);
+
 	unsigned long GetAddress(char*);
 public:
 	ServerManager();

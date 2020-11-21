@@ -82,6 +82,7 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 		}
 
 	}
+	GlobalServerInfo::RemoveMutexInfo();
 }
 
 

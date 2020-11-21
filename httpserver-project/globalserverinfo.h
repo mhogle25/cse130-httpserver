@@ -35,7 +35,7 @@ public:
 	static bool AddMutexInfo(char*);
 	static pthread_mutex_t* GetFileMutex(char*);
 	static bool MutexInfoExists(char*);
-	static void RemoveMutexInfo(char*);
+	static void RemoveMutexInfo();
 };
 
 #endif

@@ -80,7 +80,7 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		messageCode = GetAction();
 
 		pthread_mutex_unlock(mutx);
-		GlobalServerInfo::RemoveMutexInfo(filename);
+		// GlobalServerInfo::RemoveMutexInfo(filename);
 		return messageCode;
 	}
 	
@@ -136,14 +136,16 @@ int HTTPParse::ParseRequestBody(char* r) {
 	strncpy(body, request, contentLength);
 	body[contentLength] = '\0';
 	
+	int messageCode = 500;	
 	if (GlobalServerInfo::redundancy) {
-		return PutActionRedundancy();
+		messageCode = PutActionRedundancy();
 	}
-	return PutAction();
+	messageCode = PutAction();
 	
 	pthread_mutex_unlock(mutx);
-	GlobalServerInfo::RemoveMutexInfo(filename);
-
+	// GlobalServerInfo::RemoveMutexInfo(filename);
+	
+	return messageCode;
 }
 
 int HTTPParse::GetRequestType() {

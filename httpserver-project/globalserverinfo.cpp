@@ -1,26 +1,49 @@
 #include "globalserverinfo.h"
 
-GlobalServerInfo::ServerInfo* GlobalServerInfo::serverInfos {
-	nullptr
+int GlobalServerInfo::mutexInfosSize{
+	0
 };
 
-void GlobalServerInfo::InitializeServerInfos(int n) {
-	if (serverInfos != nullptr) {
-		delete[] serverInfos;
+vector<GlobalServerInfo::MutexInfo> GlobalServerInfo::mutexInfos;
+
+bool GlobalServerInfo::AddMutexInfo(char* filename) {
+	if (MutexInfoExists(filename)) {
+		return false;
 	}
-	
-	serverInfos = new ServerInfo[n];
-	serverInfosSize = n;
+
+	MutexInfo mutexInfo;
+	mutexInfo.filename = filename;
+	mutexInfos.push_back(mutexInfo);
+	mutexInfosSize++;
+
+	return true;
 }
 
-bool GlobalServerInfo::FileBeingUsed(char* f) {
-	for (int i = 0; i < serverInfosSize; i++) {
-		if (strcmp(serverInfos[i].filename, f) == 0) {
-			if (serverInfos.isUsing) {
-				return true;
-			}
+pthread_mutex_t* GlobalServerInfo::GetFileMutex(char* f) {
+	for (int i = 0; i < mutexInfosSize; i++) {
+		if (strcmp(mutexInfos[i].filename, f) == 0) {
+			return &mutexInfos[i].mutex;
 		}
 	}
-	
+
+	return NULL;
+}
+
+bool GlobalServerInfo::MutexInfoExists(char* f) {
+	for (int i = 0; i < mutexInfosSize; i++) {
+		if (strcmp(mutexInfos[i].filename, f) == 0) {
+			return true;
+		}
+	}
+
 	return false;
+}
+
+void GlobalServerInfo::RemoveMutexInfo(char* f) {
+	for (int i = 0; i < mutexInfosSize; i++) {
+		if (strcmp(mutexInfos[i].filename, f) == 0) {
+			mutexInfos.erase(mutexInfos.begin() + i);
+			mutexInfosSize--;
+		}
+	}
 }

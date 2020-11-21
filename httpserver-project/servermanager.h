@@ -13,6 +13,7 @@
 
 #include "httpparse.h"
 #include "globalserverinfo.h"
+#include "serverconnection.h"
 
 class ServerManager {
 private:

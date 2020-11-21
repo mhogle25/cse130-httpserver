@@ -9,14 +9,17 @@ void ServerConnection::SetupConnection(int fd) {
 	pthread_t thread;
 	int *testfd = (int*)malloc(sizeof(int));
 	*testfd = fd;
-	pthread_create(&thread, NULL, &doStuff, &testfd);
+
+	ServerConnection* thisSc = this;
+
+	pthread_create(&thread, NULL, &toProcess, thisSc);
 	// doStuff(fd);
 	availableServerConnections->push(*this);
 }
 
-void* ServerConnection::doStuff(void *p_fd) {
-	int comm_fd = *((int*)p_fd);
-	free(p_fd);
+void ServerConnection::doStuff() {
+	// int comm_fd = *((int*)p_fd);
+	// free(p_fd);
 	char buf[SIZE];
 	HTTPParse* parser = new HTTPParse();
 	while(1) {

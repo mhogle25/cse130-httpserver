@@ -1,5 +1,5 @@
 httpserver: main.o servermanager.o httpparse.o globalserverinfo.o serverconnection.o
-	g++ main.o servermanager.o httpparse.o globalserverinfo.o serverconnection.o -o httpserver
+	g++ main.o servermanager.o httpparse.o globalserverinfo.o serverconnection.o -o httpserver -lpthread
 
 main.o: main.cpp
 	g++ -c -pthread main.cpp

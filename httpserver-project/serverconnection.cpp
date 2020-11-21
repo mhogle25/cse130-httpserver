@@ -94,3 +94,8 @@ char* ServerConnection::GenerateMessage(int message, int contentLength) {
 		return NULL;
 	}
 }
+
+void* ServerConnection::toProcess(void* arg) {
+	ServerConnection* scPointer = (ServerConnection*)arg;
+	scPointer->doStuff();
+}

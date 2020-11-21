@@ -15,8 +15,6 @@
 
 #include "httpparse.h"
 
-void* toProcess(void*);
-
 class ServerConnection {
 public:
 	void SetupConnection(int);
@@ -27,12 +25,8 @@ private:
 	bool redundancy;
 	std::queue<ServerConnection>* availableServerConnections;
 	
-	char* GenerateMessage(int, int);	
+	char* GenerateMessage(int, int);
+	static void* toProcess(void*);
 };
-
-void* toProcess(void* arg) {
-	ServerConnection* scPointer = (ServerConnection*)arg;
-	scPointer->doStuff();
-}
 
 #endif

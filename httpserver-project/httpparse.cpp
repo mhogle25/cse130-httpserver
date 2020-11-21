@@ -38,7 +38,7 @@ int HTTPParse::ParseRequestHeader(char* r, bool redundancy) {
 	}
 	
 	if (strlen(filename) != 10) {
-		return 500;
+		return 400;
 	}
 	
 	//printf("%s\n", filename);
@@ -181,6 +181,15 @@ int HTTPParse::PutActionRedundancy() {
 		}
 	}
 	// if they're all 0's send 201
+	int numBadFiles = 0;
+	for (int i = 0; i < 3; i++) {
+		if (hasError[i] == 1){
+			numBadFiles++;
+		}
+	}
+	if (numBadFiles == 1) {
+		return 500; // ask TA
+	}
 	return 201;
 }
 
@@ -222,6 +231,8 @@ int HTTPParse::GetAction() {
 }
 
 int HTTPParse::GetActionRedundancy() {
+	// std::cout << "enters get redundancy" << std::endl;
+
 	bool foundFile, sameContent = true;
 	bool firstTwoAreSame, secondTwoAreSame, firstAndThirdAreSame = true;
 	struct fileData file1, file2, file3;
@@ -263,6 +274,7 @@ int HTTPParse::GetActionRedundancy() {
 			contentLength = strlen(body);
 
 		if (i == 1) {
+			// std::cout << "saving to first" << std::endl;
 			file1.fileSize = contentLength;
 			strcpy(file1.fileContents, body);
 		} else if (i == 2) {
@@ -272,6 +284,7 @@ int HTTPParse::GetActionRedundancy() {
 			file3.fileSize = contentLength;
 			strcpy(file3.fileContents, body);
 		}
+
 		//printf("%s\n", body);
 		//printf("%lu\n", strlen(body));
 		//printf("%i\n", contentLength);
@@ -286,28 +299,38 @@ int HTTPParse::GetActionRedundancy() {
 	bool differentFiles = true;
 	// if toSend is all 0's then non of the files are the same
 	for (int i = 0; i < 3; i++) {
+		// std::cout << "tosend" << std::endl;
+		// std::cout << i << std::endl;
+		// std::cout << toSend[i] << std::endl;
 		if (toSend[i] == 1) {
 			differentFiles = false;
-			switch (i)
-			{
-			case 1:
+			if (i==0) {
+				// std::cout << "enters case 1" << std::endl;
 				contentLength = file1.fileSize;
 				// clear body probably
 				strcpy(body, file1.fileContents);
 				break;
-			case 2:
+			} else if (i==1) {
+				// std::cout << "enters case 2" << std::endl;
 				contentLength = file2.fileSize;
 				// clear body probably
 				strcpy(body, file2.fileContents);
 				break;
-			default:
+			} else {
+				// std::cout << "enters case 3" << std::endl;
 				contentLength = file3.fileSize;
 				// clear body probably
 				strcpy(body, file3.fileContents);
 				break;
 			}
-			return 200;
 		}
+	}
+	if (differentFiles == false) {
+		// std::cout << "check contentlength and buffer" << std::endl;
+		// std::cout << contentLength << std::endl;
+		// std::cout << body << std::endl;
+
+		return 200;
 	}
 	return 500;
 }
@@ -359,6 +382,7 @@ void HTTPParse::SetFileToSend(fileData f1, fileData f2, fileData f3, int *toSend
 	} else {
 		// they're not the same contents
 		if (firstTwoAreSame) {
+			// std::cout << "first two are same" << std::endl;
 			// return one of the two
 			toSend[0] = 1;
 		} else if (secondTwoAreSame) {
@@ -366,7 +390,7 @@ void HTTPParse::SetFileToSend(fileData f1, fileData f2, fileData f3, int *toSend
 			toSend[1] = 1;
 		} else if (firstAndThirdAreSame) {
 			// return one of the two
-			toSend[3] = 1;
+			toSend[2] = 1;
 		}
 	}
 }

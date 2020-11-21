@@ -101,12 +101,9 @@ void ServerManager::Setup(char* address, unsigned short port, bool redundancy) {
 				}
 			}
 			
-
-			
 		}
 		
 		if (parser != NULL) {
-			err(1, "Connection ended early, could not complete the request");
 			delete parser;
 		}
 		

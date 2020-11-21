@@ -70,9 +70,14 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 			continue;
 		}
 		
-		ServerConnection servCon = availableServerConnections->front();
-		availableServerConnections->pop();
-		servCon.SetupConnection(comm_fd);
+		if (GlobalServerInfo::mutexInfosSize > 0) {
+			ServerConnection servCon = availableServerConnections->front();
+			availableServerConnections->pop();
+			servCon.SetupConnection(comm_fd);
+		} else {
+			// error: no more threads available
+		}
+
 	}
 }
 

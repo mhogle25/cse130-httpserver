@@ -27,9 +27,9 @@ private:
 	};
 
 	static vector<MutexInfo> mutexInfos;
-	static int mutexInfosSize;
 public:
 	static bool redundancy;	
+	static int mutexInfosSize;
 	
 	static bool AddMutexInfo(char*);
 	static pthread_mutex_t* GetFileMutex(char*);

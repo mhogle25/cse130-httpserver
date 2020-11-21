@@ -33,7 +33,7 @@ unsigned long ServerManager::GetAddress(char *name) {
 	return res;
 }
 
-void ServerManager::Setup(char* address, unsigned short port) {
+void ServerManager::Setup(char* address, unsigned short port, bool redundancy) {
 	struct sockaddr_in servaddr;
  	memset(&servaddr, 0, sizeof servaddr);
 	
@@ -73,7 +73,7 @@ void ServerManager::Setup(char* address, unsigned short port) {
 			
 			int message;
 			if (parser->GetRequestType() == 1) {
-				message = parser->ParseRequestBody(buf);
+				message = parser->ParseRequestBody(buf, redundancy);
 				
 				memset(buf, 0, sizeof(buf));	//Clear Buffer
 				char* msg = GenerateMessage(message, 0);
@@ -82,7 +82,7 @@ void ServerManager::Setup(char* address, unsigned short port) {
 				delete parser;
 				parser = new HTTPParse();
 			} else {
-				message = parser->ParseRequestHeader(buf);
+				message = parser->ParseRequestHeader(buf, redundancy);
 				
 				memset(buf, 0, sizeof(buf));	//Clear Buffer
 				if (message != 0) {
@@ -101,12 +101,9 @@ void ServerManager::Setup(char* address, unsigned short port) {
 				}
 			}
 			
-
-			
 		}
 		
 		if (parser != NULL) {
-			err(1, "Connection ended early, could not complete the request");
 			delete parser;
 		}
 		

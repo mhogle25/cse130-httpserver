@@ -27,16 +27,24 @@ private:
 	
 	char* GetWord();
 	int PutAction();
+	int PutActionRedundancy();
 	int GetAction();
+	int GetActionRedundancy();
 public:	
+
+	struct fileData {
+		int fileSize;
+		char fileContents[32768];
+	};
 	char body[SIZE];
 		
 	HTTPParse();
 	~HTTPParse();
-	int ParseRequestHeader(char*);
-	int ParseRequestBody(char*);
+	int ParseRequestHeader(char*, bool);
+	int ParseRequestBody(char*, bool);
 	int GetRequestType();
 	int GetContentLength();
+	void SetFileToSend(fileData, fileData, fileData, int *);
 };
 
 #endif

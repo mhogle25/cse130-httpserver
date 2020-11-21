@@ -11,6 +11,8 @@ void ServerConnection::SetupConnection(int fd) {
 	*testfd = fd;
 
 	ServerConnection* thisSc = this;
+	
+	printf("Before the thread is created\n");
 
 	pthread_create(&thread, NULL, &toProcess, thisSc);
 	// doStuff(fd);
@@ -18,6 +20,7 @@ void ServerConnection::SetupConnection(int fd) {
 }
 
 void ServerConnection::doStuff() {
+	printf("Inside of doStuff\n");
 	// int comm_fd = *((int*)p_fd);
 	// free(p_fd);
 	char buf[SIZE];
@@ -96,6 +99,7 @@ char* ServerConnection::GenerateMessage(int message, int contentLength) {
 }
 
 void* ServerConnection::toProcess(void* arg) {
+	printf("Thread has been created, moving into doStuff()\n");
 	ServerConnection* scPointer = (ServerConnection*)arg;
 	scPointer->doStuff();
 }

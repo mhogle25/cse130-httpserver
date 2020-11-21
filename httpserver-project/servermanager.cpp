@@ -70,7 +70,10 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 			continue;
 		}
 		
+		printf("Before the pop\n");
+		
 		if (GlobalServerInfo::mutexInfosSize > 0) {
+			printf("After the pop\n");
 			ServerConnection servCon = availableServerConnections->front();
 			availableServerConnections->pop();
 			servCon.SetupConnection(comm_fd);

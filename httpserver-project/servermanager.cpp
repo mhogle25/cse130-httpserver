@@ -2,11 +2,12 @@
 #include <stdlib.h>
 
 ServerManager::ServerManager() {
+	availableServerConnections = new queue<ServerConnection>();
 	listen_fd = 0;
 }
 
 ServerManager::~ServerManager() {
-	
+	delete availableServerConnections;
 }
 
 /*
@@ -32,7 +33,15 @@ unsigned long ServerManager::GetAddress(char *name) {
 	return res;
 }
 
-void ServerManager::Setup(char* address, unsigned short port, bool redundancy) {
+void ServerManager::Setup(char* address, unsigned short port, int threadCount, bool redundancy) {
+	GlobalServerInfo::redundancy = redundancy;
+	
+	for (int i = 0; i < threadCount; i++) {
+		ServerConnection serverConnection;
+		serverConnection.Init(availableServerConnections);
+		availableServerConnections->push(serverConnection);
+	}	
+	
 	struct sockaddr_in servaddr;
  	memset(&servaddr, 0, sizeof servaddr);
 	
@@ -51,7 +60,7 @@ void ServerManager::Setup(char* address, unsigned short port, bool redundancy) {
  	if (listen(listen_fd, 500) < 0) {
  		err(1, "listen()");
  	}
- 
+ 	
 	while(1) {
 		char waiting[] = "waiting for connection\n";
 		write(STDOUT_FILENO, waiting, strlen(waiting));
@@ -61,9 +70,9 @@ void ServerManager::Setup(char* address, unsigned short port, bool redundancy) {
 			continue;
 		}
 		
-		ServerConnection* serverConnection = new ServerConnection();
-		serverConnection->Setup(comm_fd, redundancy);
-		delete serverConnection;
+		ServerConnection servCon = availableServerConnections->front();
+		availableServerConnections->pop();
+		servCon.SetupConnection(comm_fd);
 	}
 }
 

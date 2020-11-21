@@ -10,14 +10,18 @@
 #include <err.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <queue>
 
 #include "httpparse.h"
 
 class ServerConnection {
 public:
-	void Setup(int, bool);
+	void SetupConnection(int);
+	void Init(std::queue<ServerConnection>*);
 private: 
 	int comm_fd;
+	bool redundancy;
+	std::queue<ServerConnection>* availableServerConnections;
 	
 	char* GenerateMessage(int, int);	
 };

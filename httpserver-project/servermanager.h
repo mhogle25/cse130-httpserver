@@ -10,6 +10,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include "httpparse.h"
 #include "globalserverinfo.h"
@@ -18,12 +19,13 @@
 class ServerManager {
 private:
 	int listen_fd;
-
+	queue<ServerConnection>* availableServerConnections;
+	
 	unsigned long GetAddress(char*);
 public:
 	ServerManager();
 	~ServerManager();
-	void Setup(char*, unsigned short, bool);
+	void Setup(char*, unsigned short, int, bool);
 };
 
 #endif

@@ -1,7 +1,13 @@
 #include "serverconnection.h"
 
-void ServerConnection::Setup(int fd, bool redundancy) {
+void ServerConnection::Init(queue<ServerConnection>* q) {
+	availableServerConnections = q;
+}
+
+void ServerConnection::SetupConnection(int fd) {
 	comm_fd = fd;
+	
+	
 	
 	char buf[SIZE];
 	HTTPParse* parser = new HTTPParse();
@@ -14,7 +20,7 @@ void ServerConnection::Setup(int fd, bool redundancy) {
 		
 		int message;
 		if (parser->GetRequestType() == 1) {
-			message = parser->ParseRequestBody(buf, redundancy);
+			message = parser->ParseRequestBody(buf);
 			
 			memset(buf, 0, sizeof(buf));	//Clear Buffer
 			char* msg = GenerateMessage(message, 0);
@@ -23,7 +29,7 @@ void ServerConnection::Setup(int fd, bool redundancy) {
 			delete parser;
 			parser = new HTTPParse();
 		} else {
-			message = parser->ParseRequestHeader(buf, redundancy);
+			message = parser->ParseRequestHeader(buf);
 			
 			memset(buf, 0, sizeof(buf));	//Clear Buffer
 			if (message != 0) {
@@ -49,6 +55,8 @@ void ServerConnection::Setup(int fd, bool redundancy) {
 	}
 	
 	close(comm_fd);
+	
+	availableServerConnections->push(*this);
 }
 
 char* ServerConnection::GenerateMessage(int message, int contentLength) {

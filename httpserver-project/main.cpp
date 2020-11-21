@@ -67,6 +67,6 @@ int main(int argc, char **argv)
 	}
 
 	ServerManager serverManager;
-	serverManager.Setup(address, port, redundancy);
+	serverManager.Setup(address, port, threadCount, redundancy);
 	return 0;
 }

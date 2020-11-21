@@ -40,8 +40,8 @@ public:
 		
 	HTTPParse();
 	~HTTPParse();
-	int ParseRequestHeader(char*, bool);
-	int ParseRequestBody(char*, bool);
+	int ParseRequestHeader(char*);
+	int ParseRequestBody(char*);
 	int GetRequestType();
 	int GetContentLength();
 	void SetFileToSend(fileData, fileData, fileData, int *);

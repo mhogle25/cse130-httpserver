@@ -19,7 +19,7 @@ HTTPParse::~HTTPParse() {
 	delete[] filename;
 }
 
-int HTTPParse::ParseRequestHeader(char* r, bool redundancy) {
+int HTTPParse::ParseRequestHeader(char* r) {
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
@@ -60,7 +60,7 @@ int HTTPParse::ParseRequestHeader(char* r, bool redundancy) {
 	}
 	
 	if (GetRequestType() == 0) {	//GET
-		if (redundancy) {
+		if (GlobalServerInfo::redundancy) {
 			return GetActionRedundancy();
 		}
 		return GetAction();
@@ -91,7 +91,7 @@ int HTTPParse::ParseRequestHeader(char* r, bool redundancy) {
 	return 0;
 }
 
-int HTTPParse::ParseRequestBody(char* r, bool redundancy) {
+int HTTPParse::ParseRequestBody(char* r) {
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
@@ -104,7 +104,7 @@ int HTTPParse::ParseRequestBody(char* r, bool redundancy) {
 	strncpy(body, request, contentLength);
 	body[contentLength] = '\0';
 	
-	if (redundancy) {
+	if (GlobalServerInfo::redundancy) {
 		return PutActionRedundancy();
 	}
 	return PutAction();

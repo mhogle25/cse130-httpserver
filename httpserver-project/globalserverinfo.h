@@ -12,8 +12,10 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <vector>
+#include <queue>
 
 #include "string.h"
+#include "serverconnection.h"
 
 using namespace std;
 
@@ -27,6 +29,8 @@ private:
 	static vector<MutexInfo> mutexInfos;
 	static int mutexInfosSize;
 public:
+	static bool redundancy;	
+	
 	static bool AddMutexInfo(char*);
 	static pthread_mutex_t* GetFileMutex(char*);
 	static bool MutexInfoExists(char*);

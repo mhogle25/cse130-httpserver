@@ -6,9 +6,17 @@ void ServerConnection::Init(queue<ServerConnection>* q) {
 
 void ServerConnection::SetupConnection(int fd) {
 	comm_fd = fd;
-	
-	
-	
+	pthread_t thread;
+	int *testfd = (int*)malloc(sizeof(int));
+	*testfd = fd;
+	pthread_create(&thread, NULL, &doStuff, &testfd);
+	// doStuff(fd);
+	availableServerConnections->push(*this);
+}
+
+void* ServerConnection::doStuff(void *p_fd) {
+	int comm_fd = *((int*)p_fd);
+	free(p_fd);
 	char buf[SIZE];
 	HTTPParse* parser = new HTTPParse();
 	while(1) {
@@ -55,8 +63,6 @@ void ServerConnection::SetupConnection(int fd) {
 	}
 	
 	close(comm_fd);
-	
-	availableServerConnections->push(*this);
 }
 
 char* ServerConnection::GenerateMessage(int message, int contentLength) {
@@ -85,5 +91,3 @@ char* ServerConnection::GenerateMessage(int message, int contentLength) {
 		return NULL;
 	}
 }
-
-

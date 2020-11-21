@@ -60,10 +60,25 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	}
 	
 	if (GetRequestType() == 0) {	//GET
+		// add mutex ?
+		pthread_mutex_t* mutx;
+		if (GlobalServerInfo::MutexInfoExists(filename)) {
+			mutx = GlobalServerInfo::GetFileMutex(filename);
+		} else {
+			GlobalServerInfo::AddMutexInfo(filename);
+			mutx = GlobalServerInfo::GetFileMutex(filename);
+			// return 500 if this is false?
+		}
+		pthread_mutex_lock(mutx);
+
 		if (GlobalServerInfo::redundancy) {
 			return GetActionRedundancy();
 		}
 		return GetAction();
+
+		pthread_mutex_unlock(mutx);
+		GlobalServerInfo::RemoveMutexInfo(filename);
+
 	}
 	
 	if (GetRequestType() == 1) {	//PUT
@@ -87,7 +102,7 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		delete[] contentLengthHeader;
 		
 	}
-	
+	// unlock mutex
 	return 0;
 }
 
@@ -96,6 +111,16 @@ int HTTPParse::ParseRequestBody(char* r) {
 	request = r;
 	requestLength = strlen(request);
 	
+	pthread_mutex_t* mutx;
+	if (GlobalServerInfo::MutexInfoExists(filename)) {
+		mutx = GlobalServerInfo::GetFileMutex(filename);
+	} else {
+		GlobalServerInfo::AddMutexInfo(filename);
+		mutx = GlobalServerInfo::GetFileMutex(filename);
+		// return 500 if this is false?
+	}
+	pthread_mutex_lock(mutx);
+		
 	if (contentLength > requestLength) {
 		//ERROR, content length is bigger than body, return error code
 		return 500;
@@ -108,6 +133,10 @@ int HTTPParse::ParseRequestBody(char* r) {
 		return PutActionRedundancy();
 	}
 	return PutAction();
+	
+	pthread_mutex_unlock(mutx);
+	GlobalServerInfo::RemoveMutexInfo(filename);
+
 }
 
 int HTTPParse::GetRequestType() {

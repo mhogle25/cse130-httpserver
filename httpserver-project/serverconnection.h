@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <queue>
+#include <pthread.h>
 
 #include "httpparse.h"
 
@@ -23,6 +24,7 @@ private:
 	bool redundancy;
 	std::queue<ServerConnection>* availableServerConnections;
 	
+	void* doStuff(void*);
 	char* GenerateMessage(int, int);	
 };
 

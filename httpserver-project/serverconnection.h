@@ -5,9 +5,9 @@
 
 class ServerConnection {
 public:
-	
+	void Setup(int);
 private: 
-	
+	int comm_fd;	
 };
 
 #endif

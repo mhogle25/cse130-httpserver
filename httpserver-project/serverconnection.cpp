@@ -10,31 +10,18 @@ void ServerConnection::Init(queue<ServerConnection>* q) {
 void ServerConnection::SetupConnection(int fd) {
 	comm_fd = fd;
 	pthread_t thread[SIZE];
-	// char thread_name[20];
-	std::cout << "check in setup" << ServerConnection::comm_fd << std::endl;
-	//ServerConnection* thisSc = this;
-	// this is pointer to instance of the object
-	//
+	// std::cout << "check in setup" << ServerConnection::comm_fd << std::endl;
 	int counterVal = GlobalServerInfo::GetCounter();
 	struct testStruct testinggg;
 	testinggg.testFd = fd;
 	testinggg.thisSc = this;
 	pthread_create(&thread[counterVal], NULL, &toProcess, &testinggg);
-	// pthread_join(thread, NULL);
-	// doStuff(fd);
-	//std::string s = std::to_string(counterVal);
-	//char const *threadNum = s.c_str();
-	//int setThreadName = pthread_setname_np(thread[counterVal], threadNum);
-	//int testThreadName = pthread_getname_np(thread[counterVal], thread_name, 20);
-	//strcpy(name,thread_name);
-	//std::cout << "thread name" << thread_name << std::endl;
-	//std::cout << "created thread: " << counterVal << std::endl;
 	// availableServerConnections->push(*this);
 }
 
 void ServerConnection::doStuff(int testfd) {
-	std::cout << "comm_fd: " << ServerConnection::comm_fd << std::endl;
-	std::cout << "testfd: " << testfd << std::endl;
+	// std::cout << "comm_fd: " << ServerConnection::comm_fd << std::endl;
+	// std::cout << "testfd: " << testfd << std::endl;
 	char buf[SIZE];
 	HTTPParse* parser = new HTTPParse();
 	while(1) {
@@ -64,12 +51,12 @@ void ServerConnection::doStuff(int testfd) {
 				char* msg = GenerateMessage(message, parser->GetContentLength());
 				if (message == 200) {
 					//printf("%s", msg);
-					send(comm_fd, msg, strlen(msg), 0);
+					send(testfd, msg, strlen(msg), 0);
 					//printf("%s\n", parser->body);
-					send(comm_fd, parser->body, strlen(parser->body), 0);
+					send(testfd, parser->body, strlen(parser->body), 0);
 				} else {
 					//printf("%s", msg);
-					send(comm_fd, msg, strlen(msg), 0);
+					send(testfd, msg, strlen(msg), 0);
 				}
 				delete parser;
 				parser = new HTTPParse();

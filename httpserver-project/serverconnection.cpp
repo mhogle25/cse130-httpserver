@@ -1,6 +1,7 @@
 #include "serverconnection.h"
 #include <unistd.h>
 #include <sys/types.h>
+#include <string.h>
 
 void ServerConnection::Init(queue<ServerConnection>* q) {
 	availableServerConnections = q;
@@ -8,38 +9,51 @@ void ServerConnection::Init(queue<ServerConnection>* q) {
 
 void ServerConnection::SetupConnection(int fd) {
 	comm_fd = fd;
-	pthread_t thread;
-	std::cout << "creating thread" << std::endl;
-	ServerConnection* thisSc = this;
-
-	pthread_create(&thread, NULL, &toProcess, thisSc);
-	pthread_join(thread, NULL);
+	pthread_t thread[SIZE];
+	// char thread_name[20];
+	std::cout << "check in setup" << ServerConnection::comm_fd << std::endl;
+	//ServerConnection* thisSc = this;
+	// this is pointer to instance of the object
+	//
+	int counterVal = GlobalServerInfo::GetCounter();
+	struct testStruct testinggg;
+	testinggg.testFd = fd;
+	testinggg.thisSc = this;
+	pthread_create(&thread[counterVal], NULL, &toProcess, &testinggg);
+	// pthread_join(thread, NULL);
 	// doStuff(fd);
-	std::cout << "created thread id: " << pthread_self() << std::endl;
+	//std::string s = std::to_string(counterVal);
+	//char const *threadNum = s.c_str();
+	//int setThreadName = pthread_setname_np(thread[counterVal], threadNum);
+	//int testThreadName = pthread_getname_np(thread[counterVal], thread_name, 20);
+	//strcpy(name,thread_name);
+	//std::cout << "thread name" << thread_name << std::endl;
+	//std::cout << "created thread: " << counterVal << std::endl;
 	// availableServerConnections->push(*this);
 }
 
-void ServerConnection::doStuff() {
-	// int comm_fd = *((int*)p_fd);
-	// free(p_fd);
-	std::cout << "inside doStuff" << pthread_self() << std::endl;
+void ServerConnection::doStuff(int testfd) {
+	std::cout << "comm_fd: " << ServerConnection::comm_fd << std::endl;
+	std::cout << "testfd: " << testfd << std::endl;
 	char buf[SIZE];
 	HTTPParse* parser = new HTTPParse();
 	while(1) {
-		int n = recv(comm_fd, buf, SIZE, 0);
+		int n = recv(testfd, buf, SIZE, 0);
 		if (n < 0) warn("recv()");
 		if (n <= 0) break;
 		
 		//printf("%s", buf);
-		
+			
 		int message;
 		if (parser->GetRequestType() == 1) {
+			//std::cout << "thread??" << name << endl; 
+			std::cout << "before getting msg Code:" << testfd << std::endl;
 			message = parser->ParseRequestBody(buf);
-			
 			memset(buf, 0, sizeof(buf));	//Clear Buffer
 			char* msg = GenerateMessage(message, 0);
 			//printf("%s\n", msg);
-			send(comm_fd, msg, strlen(msg), 0);
+			send(testfd, msg, strlen(msg), 0);
+			std::cout << "sent to: " << testfd << std::endl;
 			delete parser;
 			parser = new HTTPParse();
 		} else {
@@ -68,7 +82,7 @@ void ServerConnection::doStuff() {
 		delete parser;
 	}
 	
-	close(comm_fd);
+	close(testfd);
 	availableServerConnections->push(*this);
 }
 
@@ -100,6 +114,7 @@ char* ServerConnection::GenerateMessage(int message, int contentLength) {
 }
 
 void* ServerConnection::toProcess(void* arg) {
-	ServerConnection* scPointer = (ServerConnection*)arg;
-	scPointer->doStuff();
+	//ServerConnection* scPointer = (ServerConnection*)arg;
+	testStruct* test = (testStruct*)arg;
+	test->thisSc->doStuff(test->testFd);
 }

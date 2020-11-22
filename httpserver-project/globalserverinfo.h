@@ -17,7 +17,7 @@
 #include <iostream>
 #include "string.h"
 // #include "serverconnection.h"
-
+#include <map>
 using namespace std;
 
 class GlobalServerInfo {
@@ -28,14 +28,18 @@ private:
 	};
 
 	static vector<MutexInfo*> mutexInfos;
+	static map<int, int> mymap;
 public:
 	static bool redundancy;	
 	static int mutexInfosSize;
-	
+	static int testCounter;
+
 	static bool AddMutexInfo(char*);
 	static pthread_mutex_t* GetFileMutex(char*);
 	static bool MutexInfoExists(char*);
 	static void RemoveMutexInfo();
+	static void IncrementCounter();
+	static int GetCounter();
 };
 
 #endif

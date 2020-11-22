@@ -66,7 +66,7 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		if (GlobalServerInfo::MutexInfoExists(filename)) {
 			mutx = GlobalServerInfo::GetFileMutex(filename);
 		} else {
-			std::cout << "adding mutex - get" << std::endl;
+			//std::cout << "adding mutex - get" << std::endl;
 			GlobalServerInfo::AddMutexInfo(filename);
 			mutx = GlobalServerInfo::GetFileMutex(filename);
 			// return 500 if this is false?
@@ -110,13 +110,13 @@ int HTTPParse::ParseRequestHeader(char* r) {
 }
 
 int HTTPParse::ParseRequestBody(char* r) {
-	std::cout << "inside parseReqBody" << pthread_self() << std::endl;
+	std::cout << "inside parseReqBody" << std::endl;
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
 	
 	pthread_mutex_t* mutx;
-	std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
+	//std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
 	if (GlobalServerInfo::MutexInfoExists(filename)) {
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 	} else {
@@ -125,11 +125,9 @@ int HTTPParse::ParseRequestBody(char* r) {
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 		// return 500 if this is false?
 	}
-	std::cout << "thread id: " << pthread_self() << std::endl;
 	std::cout << "outside mutex lock - put" << filename << std::endl;
 	pthread_mutex_lock(mutx);
 	std::cout << "inside mutex - put" << std::endl;
-	std::cout << "thread id inside:" <<  pthread_self() << std::endl;	
 	if (contentLength > requestLength) {
 		//ERROR, content length is bigger than body, return error code
 		return 500;

@@ -19,9 +19,15 @@ class ServerConnection {
 public:
 	void SetupConnection(int);
 	void Init(std::queue<ServerConnection>*);
-	void doStuff();
+	void doStuff(int);
 private: 
+struct testStruct {
+        int testFd;
+        ServerConnection* thisSc;
+};
+
 	int comm_fd;
+	char name[20];
 	bool redundancy;
 	std::queue<ServerConnection>* availableServerConnections;
 	

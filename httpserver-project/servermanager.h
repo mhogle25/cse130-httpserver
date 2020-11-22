@@ -19,7 +19,7 @@
 class ServerManager {
 private:
 	int listen_fd;
-	queue<ServerConnection>* availableServerConnections;
+	queue<ServerConnection*>* availableServerConnections;
 	
 	unsigned long GetAddress(char*);
 public:

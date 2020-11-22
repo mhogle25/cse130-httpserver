@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-void ServerConnection::Init(queue<ServerConnection>* q) {
+void ServerConnection::Init(queue<ServerConnection*>* q) {
 	availableServerConnections = q;
 }
 
@@ -15,10 +15,9 @@ void ServerConnection::SetupConnection(int fd) {
 	ServerConnection* thisSc = this;
 
 	pthread_create(&thread, NULL, &toProcess, thisSc);
-	pthread_join(thread, NULL);
+	//pthread_join(thread, NULL);
 	// doStuff(fd);
 	std::cout << "created thread id: " << pthread_self() << std::endl;
-	// availableServerConnections->push(*this);
 }
 
 void ServerConnection::doStuff() {
@@ -72,7 +71,7 @@ void ServerConnection::doStuff() {
 	
 	close(comm_fd);
 
-	availableServerConnections->push(*this);
+	availableServerConnections->push(this);
 }
 
 char* ServerConnection::GenerateMessage(int message, int contentLength) {

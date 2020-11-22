@@ -2,11 +2,16 @@
 #include <stdlib.h>
 
 ServerManager::ServerManager() {
-	availableServerConnections = new queue<ServerConnection>();
+	availableServerConnections = new queue<ServerConnection*>();
 	listen_fd = 0;
 }
 
 ServerManager::~ServerManager() {
+	for (int i = 0; i < availableServerConnections->size(); i++) {
+		ServerConnection* sc = availableServerConnections->front();
+		delete sc;
+    	availableServerConnections->pop();
+	}
 	delete availableServerConnections;
 }
 
@@ -37,8 +42,8 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 	GlobalServerInfo::redundancy = redundancy;
 	
 	for (int i = 0; i < threadCount; i++) {
-		ServerConnection serverConnection;
-		serverConnection.Init(availableServerConnections);
+		ServerConnection* serverConnection = new ServerConnection();
+		serverConnection->Init(availableServerConnections);
 		availableServerConnections->push(serverConnection);
 	}	
 	
@@ -72,9 +77,9 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 		
 		if (availableServerConnections->size() > 0) {
 			std::cout << "thread available and will be taken" << std::endl;
-			ServerConnection servCon = availableServerConnections->front();
+			ServerConnection* servCon = availableServerConnections->front();
 			availableServerConnections->pop();
-			servCon.SetupConnection(comm_fd);
+			servCon->SetupConnection(comm_fd);
 		} else {
 			// error: no more threads available
 			std::cout << "no threads available" << std::endl;

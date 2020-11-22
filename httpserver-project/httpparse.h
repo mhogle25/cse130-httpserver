@@ -26,7 +26,7 @@ private:
 	int contentLength;
 	
 	char* GetWord();
-	int PutAction();
+	int PutAction(bool, char*);
 	int PutActionRedundancy();
 	int GetAction();
 	int GetActionRedundancy();
@@ -41,7 +41,7 @@ public:
 	HTTPParse();
 	~HTTPParse();
 	int ParseRequestHeader(char*);
-	int ParseRequestBody(char*);
+	int ParseRequestBody(char*, int);
 	int GetRequestType();
 	int GetContentLength();
 	void SetFileToSend(fileData, fileData, fileData, int *);

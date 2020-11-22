@@ -17,27 +17,27 @@ void ServerConnection::SetupConnection(int fd) {
 	// availableServerConnections->push(*this);
 }
 
-void ServerConnection::handleRequests(int testfd) {
+void ServerConnection::handleRequests(int fileDesc) {
 	// std::cout << "comm_fd: " << ServerConnection::comm_fd << std::endl;
-	// std::cout << "testfd: " << testfd << std::endl;
+	// std::cout << "fileDesc: " << fileDesc << std::endl;
 	char buf[SIZE];
 	HTTPParse* parser = new HTTPParse();
 	while(1) {
-		int n = recv(testfd, buf, SIZE, 0);
+		int n = recv(fileDesc, buf, SIZE, 0);
 		if (n < 0) warn("recv()");
 		if (n <= 0) break;
 		
 		//printf("%s", buf);
 			
 		int message;
-		if (parser->GetRequestType() == 1) {
-			std::cout << "before getting msg Code:" << testfd << std::endl;
-			message = parser->ParseRequestBody(buf);
+		if (parser->GetRequestType() == 1) { // PUT
+			std::cout << "before getting msg Code:" << fileDesc << std::endl;
+			message = parser->ParseRequestBody(buf, fileDesc);
 			memset(buf, 0, sizeof(buf));	//Clear Buffer
 			char* msg = GenerateMessage(message, 0);
 			//printf("%s\n", msg);
-			send(testfd, msg, strlen(msg), 0);
-			std::cout << "sent to: " << testfd << std::endl;
+			send(fileDesc, msg, strlen(msg), 0);
+			std::cout << "sent to: " << fileDesc << std::endl;
 			delete parser;
 			parser = new HTTPParse();
 		} else {
@@ -48,12 +48,12 @@ void ServerConnection::handleRequests(int testfd) {
 				char* msg = GenerateMessage(message, parser->GetContentLength());
 				if (message == 200) {
 					//printf("%s", msg);
-					send(testfd, msg, strlen(msg), 0);
+					send(fileDesc, msg, strlen(msg), 0);
 					//printf("%s\n", parser->body);
-					send(testfd, parser->body, strlen(parser->body), 0);
+					send(fileDesc, parser->body, strlen(parser->body), 0);
 				} else {
 					//printf("%s", msg);
-					send(testfd, msg, strlen(msg), 0);
+					send(fileDesc, msg, strlen(msg), 0);
 				}
 				delete parser;
 				parser = new HTTPParse();
@@ -66,7 +66,7 @@ void ServerConnection::handleRequests(int testfd) {
 		delete parser;
 	}
 	
-	close(testfd);
+	close(fileDesc);
 	availableServerConnections->push(*this);
 }
 

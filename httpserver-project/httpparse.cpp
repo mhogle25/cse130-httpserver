@@ -113,10 +113,11 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	return 0;
 }
 
-int HTTPParse::ParseRequestBody(char* r) {
-	std::cout << "inside parseReqBody" << std::endl;
+int HTTPParse::ParseRequestBody(char* r, int f) {
+	std::cout << "inside parseReqBody - fd: " << f << std::endl;
 	index = 0;
 	request = r;
+	char buffer[SIZE];
 	requestLength = strlen(request);
 	
 	pthread_mutex_t* mutx;
@@ -132,20 +133,35 @@ int HTTPParse::ParseRequestBody(char* r) {
 	std::cout << "outside mutex lock - put" << filename << std::endl;
 	pthread_mutex_lock(mutx);
 	std::cout << "inside mutex - put" << std::endl;
+	bool append = false;
+	int messageCode = 500;
 	if (contentLength > requestLength) {
-		//ERROR, content length is bigger than body, return error code
-		return 500;
+		// ERROR, content length is bigger than body, return error code
+		// return 500;
+		int counter = requestLength;
+		append = true;
+		while (counter < requestLength) {
+			// keep receiving
+			int n = recv(f, buffer, SIZE, 0);
+			if (n < 0) warn("recv()");
+			if (n <= 0) break;
+			// call PutAction(isNewFile, buffer);
+			messageCode = PutAction(append, buffer);
+			if (messageCode != 200 || messageCode != 201) {
+				// break
+				break;
+			}
+		}
+	} else {
+		strncpy(body, request, contentLength);
+		body[contentLength] = '\0';
+			
+		std::cout << "calling putAction" << std::endl;
+		if (GlobalServerInfo::redundancy) {
+			messageCode = PutActionRedundancy();
+		}
+		messageCode = PutAction(append, buffer);
 	}
-	
-	strncpy(body, request, contentLength);
-	body[contentLength] = '\0';
-	
-	int messageCode = 500;	
-	std::cout << "calling putAction" << std::endl;
-	if (GlobalServerInfo::redundancy) {
-		messageCode = PutActionRedundancy();
-	}
-	messageCode = PutAction();
 	
 	pthread_mutex_unlock(mutx);
 	// GlobalServerInfo::RemoveMutexInfo(filename);
@@ -169,9 +185,15 @@ int HTTPParse::GetRequestType() {
 	return -1;
 }
 
-int HTTPParse::PutAction() {
-	std::cout << "inside normal put" << std::endl;
-	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+int HTTPParse::PutAction(bool append, char* buff) {
+	int fd;
+
+	if (append) {
+		fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
+		strcpy(body, buff);
+	} else {
+		fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+	}
 	
 	if (fd < 0) {
 		warn("%s", filename);

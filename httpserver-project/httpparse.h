@@ -27,7 +27,7 @@ private:
 	
 	char* GetWord();
 	int PutAction(bool, char*);
-	int PutActionRedundancy();
+	int PutActionRedundancy(bool, char*);
 	int GetAction();
 	int GetActionRedundancy();
 public:	

@@ -146,7 +146,11 @@ int HTTPParse::ParseRequestBody(char* r, int f) {
 			if (n < 0) warn("recv()");
 			if (n <= 0) break;
 			// call PutAction(isNewFile, buffer);
-			messageCode = PutAction(append, buffer);
+			if (GlobalServerInfo::redundancy) {
+				messageCode = PutActionRedundancy(append, buffer);
+			} else {
+				messageCode = PutAction(append, buffer);
+			}
 			if (messageCode != 200 || messageCode != 201) {
 				// break
 				break;
@@ -158,9 +162,10 @@ int HTTPParse::ParseRequestBody(char* r, int f) {
 			
 		std::cout << "calling putAction" << std::endl;
 		if (GlobalServerInfo::redundancy) {
-			messageCode = PutActionRedundancy();
+			messageCode = PutActionRedundancy(append, buffer);
+		} else {
+			messageCode = PutAction(append, buffer);
 		}
-		messageCode = PutAction(append, buffer);
 	}
 	
 	pthread_mutex_unlock(mutx);
@@ -214,7 +219,7 @@ int HTTPParse::PutAction(bool append, char* buff) {
 	
 }
 
-int HTTPParse::PutActionRedundancy() {
+int HTTPParse::PutActionRedundancy(bool append, char* buff) {
 	int fd;
 	
 	int hasError[3] = {0, 0, 0};
@@ -229,7 +234,12 @@ int HTTPParse::PutActionRedundancy() {
 		strncat(filePath, filename, 10);
 
 		//"copy1/Small12345"
-		fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+		if (append) {
+			fd = open(filePath, O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
+			strcpy(body, buff);
+		} else {
+			fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+		}
 		if (fd < 0) {
 			warn("%s", filename);
 			hasError[i] = 1;

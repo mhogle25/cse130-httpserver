@@ -1,12 +1,12 @@
 #include "serverconnection.h"
 
-void ServerConnection::Init(std::queue<ServerConnection*>* q, pthread_mutex_t* m) {
+void ServerConnection::Init(std::queue<ServerConnection*>* q, pthread_mutex_t* m, ServerConnectionData* d) {
 	availableServerConnections = q;
 	standbyMutex = m;
+	serverConnectionData = d;
 }
 
-void ServerConnection::SetupConnection(int fd) {
-	comm_fd = fd;
+void ServerConnection::SetupConnection() {
 	pthread_mutex_unlock(standbyMutex);
 }
 
@@ -14,10 +14,13 @@ void ServerConnection::doStuff() {
 	while (1) {
 		pthread_mutex_lock(standbyMutex);
 
+		std::cout << "[ServerConnection] serverConnectionData->comm_fd: " << serverConnectionData->comm_fd << '\n';
+		std::cout << "[ServerConnection] serverConnectionData->index: " << serverConnectionData->index << '\n';
+
 		char buf[SIZE];
 		HTTPParse* parser = new HTTPParse();
 		while(1) {
-			int n = recv(comm_fd, buf, SIZE, 0);
+			int n = recv(serverConnectionData->comm_fd, buf, SIZE, 0);
 			if (n < 0) warn("recv()");
 			if (n <= 0) break;
 			
@@ -27,7 +30,7 @@ void ServerConnection::doStuff() {
 				
 				memset(buf, 0, sizeof(buf));	//Clear Buffer
 				char* msg = GenerateMessage(message, 0);
-				send(comm_fd, msg, strlen(msg), 0);
+				send(serverConnectionData->comm_fd, msg, strlen(msg), 0);
 				delete parser;
 				parser = new HTTPParse();
 			} else {
@@ -37,10 +40,10 @@ void ServerConnection::doStuff() {
 				if (message != 0) {
 					char* msg = GenerateMessage(message, parser->GetContentLength());
 					if (message == 200) {
-						send(comm_fd, msg, strlen(msg), 0);
-						send(comm_fd, parser->body, strlen(parser->body), 0);
+						send(serverConnectionData->comm_fd, msg, strlen(msg), 0);
+						send(serverConnectionData->comm_fd, parser->body, strlen(parser->body), 0);
 					} else {
-						send(comm_fd, msg, strlen(msg), 0);
+						send(serverConnectionData->comm_fd, msg, strlen(msg), 0);
 					}
 					delete parser;
 					parser = new HTTPParse();
@@ -57,9 +60,9 @@ void ServerConnection::doStuff() {
 		pthread_mutex_lock(standbyMutex);
 		std::cout << "[ServerConnection] Size of Available ServerConnections before push: " << availableServerConnections->size() << '\n';
 		availableServerConnections->push(this);
-		std::cout << "[ServerManager] Size of Available ServerConnections after pop: " << availableServerConnections->size() << '\n';
+		std::cout << "[ServerConnection] Size of Available ServerConnections after push: " << availableServerConnections->size() << '\n';
 		
-		close(comm_fd);
+		close(serverConnectionData->comm_fd);
 	}
 }
 
@@ -90,8 +93,12 @@ char* ServerConnection::GenerateMessage(int message, int contentLength) {
 }
 
 void* ServerConnection::toProcess(void* arg) {
-	ServerConnection* scPointer = (ServerConnection*)arg;
-	scPointer->doStuff();
+	ServerConnectionData* scd = (ServerConnectionData*)arg;
+	scd->thisSC->doStuff();
 	
 	return NULL;
+}
+
+int ServerConnection::GetIndex() {
+	return serverConnectionData->index;
 }

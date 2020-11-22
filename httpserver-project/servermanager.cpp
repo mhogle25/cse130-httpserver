@@ -43,17 +43,19 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 	
 	pthread_mutex_t* servConStandbyMutexes = new pthread_mutex_t[threadCount];
 	pthread_t* threads = new pthread_t[threadCount];
+	ServerConnection::ServerConnectionData* serverConnectionDatas = new ServerConnection::ServerConnectionData[threadCount];
 
 	for (int i = 0; i < threadCount; i++) {
-		ServerConnection* serverConnection = new ServerConnection();
-		serverConnection->Init(availableServerConnections, &servConStandbyMutexes[i]);
-		
+		serverConnectionDatas[i].thisSC =  new ServerConnection();
+		serverConnectionDatas[i].thisSC->Init(availableServerConnections, &servConStandbyMutexes[i], &serverConnectionDatas[i]);
+		serverConnectionDatas[i].index = i;
+
 		pthread_mutex_init(&servConStandbyMutexes[i], NULL);
 		pthread_mutex_lock(&servConStandbyMutexes[i]);
 
-		pthread_create(&threads[i], NULL, ServerConnection::toProcess, serverConnection);
+		pthread_create(&threads[i], NULL, ServerConnection::toProcess, &serverConnectionDatas[i]);
 
-		availableServerConnections->push(serverConnection);
+		availableServerConnections->push(serverConnectionDatas[i].thisSC);
 
 	}	
 	
@@ -80,18 +82,25 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 		char waiting[] = "waiting for connection\n";
 		write(STDOUT_FILENO, waiting, strlen(waiting));
 		int comm_fd = accept(listen_fd, NULL, NULL);
+		std::cout << "[ServerManager] comm_fd when accepting: " << comm_fd << '\n';
 		if (comm_fd < 0) {
 			warn("accept()");
 			continue;
 		}
-		
+
+
 		std::cout << "[ServerManager] Size of Available ServerConnections before pop: " << availableServerConnections->size() << '\n';
 		if (availableServerConnections->size() > 0) {
 			ServerConnection* servCon = availableServerConnections->front();
 			availableServerConnections->pop();
 			std::cout << "[ServerManager] Size of Available ServerConnections after pop: " << availableServerConnections->size() << '\n';
+			serverConnectionDatas[servCon->GetIndex()].comm_fd = comm_fd;
+			std::cout << "[ServerManager] serverConnectionDatas[servCon->GetIndex()].comm_fd: " << serverConnectionDatas[servCon->GetIndex()].comm_fd << '\n';
+			std::cout << "[ServerManager] servCon->GetIndex(): " << servCon->GetIndex() << '\n';
+			std::cout << "[ServerManager] serverConnectionDatas[servCon->GetIndex()].index: " << serverConnectionDatas[servCon->GetIndex()].index << '\n';
 
-			servCon->SetupConnection(comm_fd);
+
+			servCon->SetupConnection();
 		} else {
 			// error: no more threads available
 			std::cout << "no threads available" << std::endl;

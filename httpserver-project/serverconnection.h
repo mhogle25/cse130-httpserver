@@ -18,12 +18,18 @@
 
 class ServerConnection {
 public:
-	void SetupConnection(int);
-	void Init(std::queue<ServerConnection*>*, pthread_mutex_t*);
+	struct ServerConnectionData {
+		int index;
+		int comm_fd;
+		ServerConnection* thisSC;
+	};
+	void SetupConnection();
+	void Init(std::queue<ServerConnection*>*, pthread_mutex_t*, ServerConnectionData*);
 	void doStuff();	
 	static void* toProcess(void*);
+	int GetIndex();
 private: 
-	int comm_fd;
+	ServerConnectionData* serverConnectionData;
 	bool redundancy;
 	std::queue<ServerConnection*>* availableServerConnections;
 	pthread_mutex_t* standbyMutex;

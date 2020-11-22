@@ -1,85 +1,73 @@
 #include "serverconnection.h"
-#include <unistd.h>
-#include <sys/types.h>
 
-void ServerConnection::Init(queue<ServerConnection*>* q) {
+void ServerConnection::Init(std::queue<ServerConnection*>* q, pthread_mutex_t* m) {
 	availableServerConnections = q;
+	standbyMutex = m;
 }
 
 void ServerConnection::SetupConnection(int fd) {
 	comm_fd = fd;
-	pthread_t thread;
-
-
-	std::cout << "creating thread" << std::endl;
-	ServerConnection* thisSc = this;
-
-	pthread_create(&thread, NULL, &toProcess, thisSc);
-	//pthread_join(thread, NULL);
-	// doStuff(fd);
-	std::cout << "created thread id: " << pthread_self() << std::endl;
+	pthread_mutex_unlock(standbyMutex);
 }
 
 void ServerConnection::doStuff() {
-	// int comm_fd = *((int*)p_fd);
-	// free(p_fd);
-	std::cout << "inside doStuff" << pthread_self() << std::endl;
-	char buf[SIZE];
-	HTTPParse* parser = new HTTPParse();
-	while(1) {
-		int n = recv(comm_fd, buf, SIZE, 0);
-		if (n < 0) warn("recv()");
-		if (n <= 0) break;
-		
-		//printf("%s", buf);
-		
-		int message;
-		if (parser->GetRequestType() == 1) {
-			message = parser->ParseRequestBody(buf);
+	while (1) {
+		pthread_mutex_lock(standbyMutex);
+
+		char buf[SIZE];
+		HTTPParse* parser = new HTTPParse();
+		while(1) {
+			int n = recv(comm_fd, buf, SIZE, 0);
+			if (n < 0) warn("recv()");
+			if (n <= 0) break;
 			
-			memset(buf, 0, sizeof(buf));	//Clear Buffer
-			char* msg = GenerateMessage(message, 0);
-			//printf("%s\n", msg);
-			send(comm_fd, msg, strlen(msg), 0);
-			delete parser;
-			parser = new HTTPParse();
-		} else {
-			message = parser->ParseRequestHeader(buf);
-			
-			memset(buf, 0, sizeof(buf));	//Clear Buffer
-			if (message != 0) {
-				char* msg = GenerateMessage(message, parser->GetContentLength());
-				if (message == 200) {
-					//printf("%s", msg);
-					send(comm_fd, msg, strlen(msg), 0);
-					//printf("%s\n", parser->body);
-					send(comm_fd, parser->body, strlen(parser->body), 0);
-				} else {
-					//printf("%s", msg);
-					send(comm_fd, msg, strlen(msg), 0);
-				}
+			int message;
+			if (parser->GetRequestType() == 1) {
+				message = parser->ParseRequestBody(buf);
+				
+				memset(buf, 0, sizeof(buf));	//Clear Buffer
+				char* msg = GenerateMessage(message, 0);
+				send(comm_fd, msg, strlen(msg), 0);
 				delete parser;
 				parser = new HTTPParse();
+			} else {
+				message = parser->ParseRequestHeader(buf);
+				
+				memset(buf, 0, sizeof(buf));	//Clear Buffer
+				if (message != 0) {
+					char* msg = GenerateMessage(message, parser->GetContentLength());
+					if (message == 200) {
+						send(comm_fd, msg, strlen(msg), 0);
+						send(comm_fd, parser->body, strlen(parser->body), 0);
+					} else {
+						send(comm_fd, msg, strlen(msg), 0);
+					}
+					delete parser;
+					parser = new HTTPParse();
+				}
 			}
+			
 		}
 		
-	}
-	
-	if (parser != NULL) {
-		delete parser;
-	}
-	
-	close(comm_fd);
+		if (parser != NULL) {
+			delete parser;
+		}
 
-	availableServerConnections->push(this);
+		pthread_mutex_unlock(standbyMutex);
+		pthread_mutex_lock(standbyMutex);
+		std::cout << "[ServerConnection] Size of Available ServerConnections before push: " << availableServerConnections->size() << '\n';
+		availableServerConnections->push(this);
+		std::cout << "[ServerManager] Size of Available ServerConnections after pop: " << availableServerConnections->size() << '\n';
+		
+		close(comm_fd);
+	}
 }
 
 char* ServerConnection::GenerateMessage(int message, int contentLength) {
 	if (message == 0) {
 		return NULL;
 	} else if (message == 200) {
-		char clString[SIZE];
-		//printf("%i", contentLength);
+		char clString[SIZE]; 
 		sprintf(clString, "%i", contentLength);
 		char* msg = strdup("HTTP/1.1 200 OK\r\nContent-Length: ");
 		msg = strcat(msg, clString);

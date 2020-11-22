@@ -12,21 +12,23 @@
 #include <fcntl.h>
 #include <queue>
 #include <pthread.h>
+#include <sys/types.h>
 
 #include "httpparse.h"
 
 class ServerConnection {
 public:
 	void SetupConnection(int);
-	void Init(std::queue<ServerConnection*>*);
-	void doStuff();
+	void Init(std::queue<ServerConnection*>*, pthread_mutex_t*);
+	void doStuff();	
+	static void* toProcess(void*);
 private: 
 	int comm_fd;
 	bool redundancy;
 	std::queue<ServerConnection*>* availableServerConnections;
+	pthread_mutex_t* standbyMutex;
 	
 	char* GenerateMessage(int, int);
-	static void* toProcess(void*);
 };
 
 #endif

@@ -26,8 +26,6 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	
 	requestType = GetWord();
 	
-	//printf("%s\n", requestType);
-	
 	filename = GetWord();
 	
 	if (filename[0] == '/') {
@@ -41,8 +39,6 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		return 400;
 	}
 	
-	//printf("%s\n", filename);
-	
 	char* httpTitle = GetWord();
 	
 	if (strcmp(httpTitle, "HTTP/1.1") != 0) {
@@ -52,8 +48,6 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	
 	delete[] httpTitle;
 	
-	//printf("%s\n", httpTitle);
-	
 	if (GetRequestType() == -1) {
 		//ERROR, not an HTTP request, return error code
 		return 500;
@@ -62,11 +56,11 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	if (GetRequestType() == 0) {	//GET
 		// add mutex ?
 		pthread_mutex_t* mutx;
-		std::cout << "outside mutex lock - get" << filename << std::endl;
+		//std::cout << "outside mutex lock - get" << filename << std::endl;
 		if (GlobalServerInfo::MutexInfoExists(filename)) {
 			mutx = GlobalServerInfo::GetFileMutex(filename);
 		} else {
-			std::cout << "adding mutex - get" << std::endl;
+			//std::cout << "adding mutex - get" << std::endl;
 			GlobalServerInfo::AddMutexInfo(filename);
 			mutx = GlobalServerInfo::GetFileMutex(filename);
 			// return 500 if this is false?
@@ -98,10 +92,6 @@ int HTTPParse::ParseRequestHeader(char* r) {
 			contentLength = atoi(GetWord());
 		}
 		
-		//printf("%s\n", contentLengthHeader);
-		//printf("%i\n", contentLength);
-		//printf("%i\n", index);
-		
 		delete[] contentLengthHeader;
 		
 	}
@@ -110,26 +100,26 @@ int HTTPParse::ParseRequestHeader(char* r) {
 }
 
 int HTTPParse::ParseRequestBody(char* r) {
-	std::cout << "inside parseReqBody" << pthread_self() << std::endl;
+	//std::cout << "inside parseReqBody" << pthread_self() << std::endl;
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
 	
 	pthread_mutex_t* mutx;
-	std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
+	//std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
 	if (GlobalServerInfo::MutexInfoExists(filename)) {
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 	} else {
-		std::cout << "adding mutex - put" << std::endl;
+		//std::cout << "adding mutex - put" << std::endl;
 		GlobalServerInfo::AddMutexInfo(filename);
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 		// return 500 if this is false?
 	}
-	std::cout << "thread id: " << pthread_self() << std::endl;
-	std::cout << "outside mutex lock - put" << filename << std::endl;
+	//std::cout << "thread id: " << pthread_self() << std::endl;
+	//std::cout << "outside mutex lock - put" << filename << std::endl;
 	pthread_mutex_lock(mutx);
-	std::cout << "inside mutex - put" << std::endl;
-	std::cout << "thread id inside:" <<  pthread_self() << std::endl;	
+	//std::cout << "inside mutex - put" << std::endl;
+	//std::cout << "thread id inside:" <<  pthread_self() << std::endl;	
 	if (contentLength > requestLength) {
 		//ERROR, content length is bigger than body, return error code
 		return 500;
@@ -139,15 +129,12 @@ int HTTPParse::ParseRequestBody(char* r) {
 	body[contentLength] = '\0';
 	
 	int messageCode = 500;	
-	std::cout << "calling putAction" << std::endl;
 	if (GlobalServerInfo::redundancy) {
 		messageCode = PutActionRedundancy();
 	}
 	messageCode = PutAction();
 	
 	pthread_mutex_unlock(mutx);
-	// GlobalServerInfo::RemoveMutexInfo(filename);
-	std::cout << "returning messageCode for put" << std::endl; 
 	return messageCode;
 }
 
@@ -168,7 +155,6 @@ int HTTPParse::GetRequestType() {
 }
 
 int HTTPParse::PutAction() {
-	std::cout << "inside normal put" << std::endl;
 	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
 	
 	if (fd < 0) {
@@ -272,7 +258,6 @@ int HTTPParse::GetAction() {
 }
 
 int HTTPParse::GetActionRedundancy() {
-	// std::cout << "enters get redundancy" << std::endl;
 
 	bool foundFile, sameContent = true;
 	bool firstTwoAreSame, secondTwoAreSame, firstAndThirdAreSame = true;
@@ -315,7 +300,6 @@ int HTTPParse::GetActionRedundancy() {
 			contentLength = strlen(body);
 
 		if (i == 1) {
-			// std::cout << "saving to first" << std::endl;
 			file1.fileSize = contentLength;
 			strcpy(file1.fileContents, body);
 		} else if (i == 2) {
@@ -325,10 +309,6 @@ int HTTPParse::GetActionRedundancy() {
 			file3.fileSize = contentLength;
 			strcpy(file3.fileContents, body);
 		}
-
-		//printf("%s\n", body);
-		//printf("%lu\n", strlen(body));
-		//printf("%i\n", contentLength);
 		
 		if (close(fd) < 0) {
 			warn("%s", filename);
@@ -340,25 +320,19 @@ int HTTPParse::GetActionRedundancy() {
 	bool differentFiles = true;
 	// if toSend is all 0's then non of the files are the same
 	for (int i = 0; i < 3; i++) {
-		// std::cout << "tosend" << std::endl;
-		// std::cout << i << std::endl;
-		// std::cout << toSend[i] << std::endl;
 		if (toSend[i] == 1) {
 			differentFiles = false;
 			if (i==0) {
-				// std::cout << "enters case 1" << std::endl;
 				contentLength = file1.fileSize;
 				// clear body probably
 				strcpy(body, file1.fileContents);
 				break;
 			} else if (i==1) {
-				// std::cout << "enters case 2" << std::endl;
 				contentLength = file2.fileSize;
 				// clear body probably
 				strcpy(body, file2.fileContents);
 				break;
 			} else {
-				// std::cout << "enters case 3" << std::endl;
 				contentLength = file3.fileSize;
 				// clear body probably
 				strcpy(body, file3.fileContents);
@@ -367,9 +341,6 @@ int HTTPParse::GetActionRedundancy() {
 		}
 	}
 	if (differentFiles == false) {
-		// std::cout << "check contentlength and buffer" << std::endl;
-		// std::cout << contentLength << std::endl;
-		// std::cout << body << std::endl;
 
 		return 200;
 	}
@@ -407,7 +378,6 @@ char* HTTPParse::GetWord() {
 }
 
 int HTTPParse::GetContentLength() {
-	//printf("%i\n", contentLength);
 	return contentLength;
 }
 
@@ -423,7 +393,6 @@ void HTTPParse::SetFileToSend(fileData f1, fileData f2, fileData f3, int *toSend
 	} else {
 		// they're not the same contents
 		if (firstTwoAreSame) {
-			// std::cout << "first two are same" << std::endl;
 			// return one of the two
 			toSend[0] = 1;
 		} else if (secondTwoAreSame) {

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 ServerManager::ServerManager() {
-	availableServerConnections = new queue<ServerConnection*>();
+	availableServerConnections = new std::queue<ServerConnection*>();
 	listen_fd = 0;
 }
 
@@ -41,10 +41,20 @@ unsigned long ServerManager::GetAddress(char *name) {
 void ServerManager::Setup(char* address, unsigned short port, int threadCount, bool redundancy) {
 	GlobalServerInfo::redundancy = redundancy;
 	
+	pthread_mutex_t* servConStandbyMutexes = new pthread_mutex_t[threadCount];
+	pthread_t* threads = new pthread_t[threadCount];
+
 	for (int i = 0; i < threadCount; i++) {
 		ServerConnection* serverConnection = new ServerConnection();
-		serverConnection->Init(availableServerConnections);
+		serverConnection->Init(availableServerConnections, &servConStandbyMutexes[i]);
+		
+		pthread_mutex_init(&servConStandbyMutexes[i], NULL);
+		pthread_mutex_lock(&servConStandbyMutexes[i]);
+
+		pthread_create(&threads[i], NULL, ServerConnection::toProcess, serverConnection);
+
 		availableServerConnections->push(serverConnection);
+
 	}	
 	
 	struct sockaddr_in servaddr;
@@ -75,10 +85,12 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 			continue;
 		}
 		
+		std::cout << "[ServerManager] Size of Available ServerConnections before pop: " << availableServerConnections->size() << '\n';
 		if (availableServerConnections->size() > 0) {
-			std::cout << "thread available and will be taken" << std::endl;
 			ServerConnection* servCon = availableServerConnections->front();
 			availableServerConnections->pop();
+			std::cout << "[ServerManager] Size of Available ServerConnections after pop: " << availableServerConnections->size() << '\n';
+
 			servCon->SetupConnection(comm_fd);
 		} else {
 			// error: no more threads available
@@ -87,7 +99,13 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 		}
 
 	}
+
 	GlobalServerInfo::RemoveMutexInfo();
+
+	for (int i = 0; i < threadCount; i++) {
+		pthread_mutex_destroy(&servConStandbyMutexes[i]);
+	}
+	delete[] servConStandbyMutexes;
 }
 
 

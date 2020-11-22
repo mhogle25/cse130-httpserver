@@ -18,8 +18,6 @@
 #include "string.h"
 // #include "serverconnection.h"
 
-using namespace std;
-
 class GlobalServerInfo {
 private:
 	struct MutexInfo {
@@ -27,7 +25,7 @@ private:
 		pthread_mutex_t mutex;
 	};
 
-	static vector<MutexInfo*> mutexInfos;
+	static std::vector<MutexInfo*> mutexInfos;
 public:
 	static bool redundancy;	
 	static int mutexInfosSize;

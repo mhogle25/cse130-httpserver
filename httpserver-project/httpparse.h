@@ -45,6 +45,7 @@ public:
 	int GetRequestType();
 	int GetContentLength();
 	void SetFileToSend(fileData, fileData, fileData, int *);
+	bool isValidName(char*);
 };
 
 #endif

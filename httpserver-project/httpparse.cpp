@@ -40,6 +40,10 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	if (strlen(filename) != 10) {
 		return 400;
 	}
+
+	if (!isValidName(filename)) {
+		return 400;
+	}
 	
 	//printf("%s\n", filename);
 	
@@ -432,4 +436,20 @@ void HTTPParse::SetFileToSend(fileData f1, fileData f2, fileData f3, int *toSend
 			toSend[2] = 1;
 		}
 	}
+}
+
+bool HTTPParse::isValidName(char* filename) {
+	for (unsigned long i = 0; i < strlen(filename); i++) {
+        if (isalpha(filename[i]) || isdigit(filename[i])){
+            int num = (int)filename[i] - '0'; // look at ascii chart otherwise 0 turns into 48
+            if (isdigit(filename[i])) {
+                if (num > 9 || num < 0) {
+                    return false;
+                }
+            }
+        } else {
+        	return false;
+    	}
+    }
+    return true;
 }

@@ -31,7 +31,6 @@ void ServerConnection::handleRequests(int testfd) {
 			
 		int message;
 		if (parser->GetRequestType() == 1) {
-			//std::cout << "thread??" << name << endl; 
 			std::cout << "before getting msg Code:" << testfd << std::endl;
 			message = parser->ParseRequestBody(buf);
 			memset(buf, 0, sizeof(buf));	//Clear Buffer

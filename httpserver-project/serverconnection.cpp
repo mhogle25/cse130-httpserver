@@ -36,6 +36,7 @@ void ServerConnection::handleRequests(int fileDesc) {
 			memset(buf, 0, sizeof(buf));	//Clear Buffer
 			char* msg = GenerateMessage(message, 0);
 			//printf("%s\n", msg);
+			std::cout << "message code" << fileDesc << std::endl;
 			send(fileDesc, msg, strlen(msg), 0);
 			std::cout << "sent to: " << fileDesc << std::endl;
 			delete parser;

@@ -66,7 +66,7 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	if (GetRequestType() == 0) {	//GET
 		// add mutex ?
 		pthread_mutex_t* mutx;
-		std::cout << "outside mutex lock - get" << filename << std::endl;
+		// std::cout << "outside mutex lock - get" << filename << std::endl;
 		if (GlobalServerInfo::MutexInfoExists(filename)) {
 			mutx = GlobalServerInfo::GetFileMutex(filename);
 		} else {
@@ -114,58 +114,42 @@ int HTTPParse::ParseRequestHeader(char* r) {
 }
 
 int HTTPParse::ParseRequestBody(char* r, int f) {
-	std::cout << "inside parseReqBody - fd: " << f << std::endl;
+	// std::cout << "inside parseReqBody" << pthread_self() << std::endl;
 	index = 0;
 	request = r;
-	char buffer[SIZE];
 	requestLength = strlen(request);
 	
 	pthread_mutex_t* mutx;
-	//std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
+	std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
 	if (GlobalServerInfo::MutexInfoExists(filename)) {
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 	} else {
-		std::cout << "adding mutex - put" << std::endl;
+		// std::cout << "adding mutex - put" << std::endl;
 		GlobalServerInfo::AddMutexInfo(filename);
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 		// return 500 if this is false?
 	}
-	std::cout << "outside mutex lock - put" << filename << std::endl;
+	// std::cout << "thread id: " << pthread_self() << std::endl;
+	// std::cout << "outside mutex lock - put" << filename << std::endl;
 	pthread_mutex_lock(mutx);
-	std::cout << "inside mutex - put" << std::endl;
-	bool append = false;
-	int messageCode = 500;
-	if (contentLength > requestLength) {
-		// ERROR, content length is bigger than body, return error code
-		// return 500;
-		int counter = requestLength;
-		append = true;
-		while (counter < requestLength) {
-			// keep receiving
-			int n = recv(f, buffer, SIZE, 0);
-			if (n < 0) warn("recv()");
-			if (n <= 0) break;
-			// call PutAction(isNewFile, buffer);
-			if (GlobalServerInfo::redundancy) {
-				messageCode = PutActionRedundancy(append, buffer);
-			} else {
-				messageCode = PutAction(append, buffer);
-			}
-			if (messageCode != 200 || messageCode != 201) {
-				// break
-				break;
-			}
-		}
+	// std::cout << "inside mutex - put" << std::endl;
+	// std::cout << "thread id inside:" <<  pthread_self() << std::endl;	
+	// if (contentLength > requestLength) {
+	// 	//ERROR, content length is bigger than body, return error code
+	// 	return 500;
+	// }
+	
+	strncpy(body, request, contentLength);
+	body[contentLength] = '\0';
+	
+	int messageCode = 500;	
+	if (GlobalServerInfo::redundancy) {
+		std::cout << "[HTTPParse] calling putAction redundancy" << std::endl;
+
+		messageCode = PutActionRedundancy(requestLength, contentLength, f);
 	} else {
-		strncpy(body, request, contentLength);
-		body[contentLength] = '\0';
-			
-		std::cout << "calling putAction" << std::endl;
-		if (GlobalServerInfo::redundancy) {
-			messageCode = PutActionRedundancy(append, buffer);
-		} else {
-			messageCode = PutAction(append, buffer);
-		}
+		std::cout << "[HTTPParse] calling putAction" << std::endl;
+		messageCode = PutAction(requestLength, contentLength, f);
 	}
 	
 	pthread_mutex_unlock(mutx);
@@ -190,36 +174,60 @@ int HTTPParse::GetRequestType() {
 	return -1;
 }
 
-int HTTPParse::PutAction(bool append, char* buff) {
-	int fd;
-
-	if (append) {
-		fd = open(filename, O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
-		strcpy(body, buff);
-	} else {
-		fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-	}
+int HTTPParse::PutAction(int requestLength, int contentLength, int fdescriptor) {
+	std::cout << "inside normal put" << std::endl;
+	int messageCode = 500;
+	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
 	
 	if (fd < 0) {
 		warn("%s", filename);
-		return 403;
+		messageCode = 403;
 	}
-	
-	if (write(fd, body, strlen(body)) != strlen(body)) {
+	int writtenSuccessful = write(fd, body, strlen(body));
+	if (writtenSuccessful != strlen(body)) {
 		warn("%s", filename);
-		return 500;
+		messageCode = 500;
 	}
-	
+
+	int counter = requestLength;
+	if (counter < contentLength) {
+		while (counter < contentLength && writtenSuccessful >= 0) {
+			// keep receiving
+			char buffer[SIZE];
+			memset(buffer, 0, sizeof buffer);
+			int received = recv(fdescriptor, buffer, SIZE, 0);
+			std::cout << "buffer:" << buffer << std::endl;
+			if (received < 0){
+                warn("%s", "recv()");
+                messageCode = 500;
+                break;
+            } else if (received == 0){
+                warn("%s", "done: recv()");
+                break;
+            } else {
+                counter += received;
+                writtenSuccessful = write(fd, buffer, received);
+				if (writtenSuccessful < 0) {
+					warn("%s", "write()");
+					messageCode = 500;
+				}
+				messageCode = 201;
+            }
+		}
+	}
+	// if counter < contentLength
+		// do the while stuff
+
 	if (close(fd) < 0) {
 		warn("%s", filename);
-		return 500;
+		messageCode = 500;
 	}
-	
-	return 201;
+
+	return messageCode;
 	
 }
 
-int HTTPParse::PutActionRedundancy(bool append, char* buff) {
+int HTTPParse::PutActionRedundancy(int requestLength, int contentLength, int fdescriptor) {
 	int fd;
 	
 	int hasError[3] = {0, 0, 0};
@@ -234,20 +242,39 @@ int HTTPParse::PutActionRedundancy(bool append, char* buff) {
 		strncat(filePath, filename, 10);
 
 		//"copy1/Small12345"
-		if (append) {
-			fd = open(filePath, O_WRONLY | O_CREAT | O_APPEND, S_IRWXU);
-			strcpy(body, buff);
-		} else {
-			fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-		}
+		fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
 		if (fd < 0) {
 			warn("%s", filename);
 			hasError[i] = 1;
 		}
 			
-		if (write(fd, body, strlen(body)) != strlen(body)) {
+		int writtenSuccessful = write(fd, body, strlen(body));
+		if (writtenSuccessful != strlen(body)) {
 			warn("%s", filename);
-			hasError[i] = 1;
+			return 500;
+		}
+
+		int counter = requestLength;
+		int messageCode = 500;
+		if (counter < contentLength) {
+			while (counter < requestLength && writtenSuccessful >= 0) {
+				// keep receiving
+				char buffer[SIZE];
+				memset(buffer, 0, sizeof(buffer));
+				std::cout << "buffer" << buffer << std::endl;
+				int received = recv(fdescriptor, buffer, SIZE, 0);
+				if (received < 0){
+					warn("%s", "recv()");
+					messageCode = 500;
+					break;
+				} else if (received == 0){
+					warn("%s", "recv()");
+					break;
+				} else {
+					counter += received;
+					writtenSuccessful = write(fd, buffer, received - 1);
+				}
+			}
 		}
 			
 		if (close(fd) < 0) {

@@ -51,7 +51,7 @@ bool GlobalServerInfo::MutexInfoExists(char* f) {
 }
 
 void GlobalServerInfo::RemoveMutexInfo() {
-	std::cout << "going to delete" << std::endl;
+	// std::cout << "going to delete" << std::endl;
 	for (int i = 0; i < mutexInfosSize; i++) {
 		pthread_mutex_destroy(&mutexInfos[i]->mutex);
 		delete mutexInfos[i];

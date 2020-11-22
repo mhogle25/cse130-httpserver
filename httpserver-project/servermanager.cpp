@@ -71,14 +71,14 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 		}
 		
 		if (availableServerConnections->size() > 0) {
-			std::cout << "thread available and will be taken" << std::endl;
+			// std::cout << "thread available and will be taken" << std::endl;
 			ServerConnection servCon = availableServerConnections->front();
 			GlobalServerInfo::IncrementCounter();
 			availableServerConnections->pop();
 			servCon.SetupConnection(comm_fd);
 		} else {
 			// error: no more threads available
-			std::cout << "no threads available" << std::endl;
+			// std::cout << "no threads available" << std::endl;
 
 		}
 

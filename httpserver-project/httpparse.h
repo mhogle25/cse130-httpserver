@@ -26,8 +26,8 @@ private:
 	int contentLength;
 	
 	char* GetWord();
-	int PutAction(bool, char*);
-	int PutActionRedundancy(bool, char*);
+	int PutAction(int, int, int);
+	int PutActionRedundancy(int, int, int);
 	int GetAction();
 	int GetActionRedundancy();
 public:	

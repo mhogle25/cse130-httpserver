@@ -137,6 +137,7 @@ int HTTPParse::ParseRequestBody(char* r) {
 	body[contentLength] = '\0';
 	
 	int messageCode = 500;	
+	std::cout << "calling putAction" << std::endl;
 	if (GlobalServerInfo::redundancy) {
 		messageCode = PutActionRedundancy();
 	}
@@ -144,7 +145,7 @@ int HTTPParse::ParseRequestBody(char* r) {
 	
 	pthread_mutex_unlock(mutx);
 	// GlobalServerInfo::RemoveMutexInfo(filename);
-	
+	std::cout << "returning messageCode for put" << std::endl; 
 	return messageCode;
 }
 

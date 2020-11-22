@@ -19,10 +19,10 @@ class ServerConnection {
 public:
 	void SetupConnection(int);
 	void Init(std::queue<ServerConnection>*);
-	void doStuff(int);
+	void handleRequests(int);
 private: 
-struct testStruct {
-        int testFd;
+struct argStruct {
+        int connection_fd;
         ServerConnection* thisSc;
 };
 

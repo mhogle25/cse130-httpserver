@@ -8,18 +8,16 @@ void ServerConnection::Init(queue<ServerConnection>* q) {
 }
 
 void ServerConnection::SetupConnection(int fd) {
-	comm_fd = fd;
 	pthread_t thread[SIZE];
-	// std::cout << "check in setup" << ServerConnection::comm_fd << std::endl;
 	int counterVal = GlobalServerInfo::GetCounter();
-	struct testStruct testinggg;
-	testinggg.testFd = fd;
-	testinggg.thisSc = this;
-	pthread_create(&thread[counterVal], NULL, &toProcess, &testinggg);
+	struct argStruct arguments;
+	arguments.connection_fd = fd;
+	arguments.thisSc = this;
+	pthread_create(&thread[counterVal], NULL, &toProcess, &arguments);
 	// availableServerConnections->push(*this);
 }
 
-void ServerConnection::doStuff(int testfd) {
+void ServerConnection::handleRequests(int testfd) {
 	// std::cout << "comm_fd: " << ServerConnection::comm_fd << std::endl;
 	// std::cout << "testfd: " << testfd << std::endl;
 	char buf[SIZE];
@@ -102,6 +100,6 @@ char* ServerConnection::GenerateMessage(int message, int contentLength) {
 
 void* ServerConnection::toProcess(void* arg) {
 	//ServerConnection* scPointer = (ServerConnection*)arg;
-	testStruct* test = (testStruct*)arg;
-	test->thisSc->doStuff(test->testFd);
+	argStruct* test = (argStruct*)arg;
+	test->thisSc->handleRequests(test->connection_fd);
 }

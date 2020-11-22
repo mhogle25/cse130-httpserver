@@ -38,7 +38,7 @@ void setValues(int argc, char **argv, int &threadCount, bool &redundancy, char *
 //NEED TO ACCOUNT FOR THREADING ARGUMENTS
 int main(int argc, char **argv)
 {
-	int threadCount;
+	int threadCount = 4;
 	bool redundancy = false;
 	char *address;
 	int port = 80;

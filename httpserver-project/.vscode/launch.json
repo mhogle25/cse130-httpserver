@@ -1,0 +1,30 @@
+{
+    "version": "1.2.0",
+    "configurations": [
+            {
+                "name": "cse130debug",
+                "type": "cppdbg",
+                "request": "launch",
+                "program": "${workspaceFolder}/httpserver",
+                "args": [
+                    "localhost",
+                    "8080",
+                    "-N",
+                    "3"
+                ],
+                "stopAtEntry": false,
+                "cwd": "${workspaceFolder}",
+                "environment": [],
+                "externalConsole": false,
+                "MIMode": "gdb",
+                "setupCommands": [
+                    {
+                        "description": "Enable pretty-printing for gdb",
+                        "text": "-enable-pretty-printing",
+                        "ignoreFailures": true
+                    }
+                ],
+                "miDebuggerPath": "/usr/bin/gdb"
+            }
+    ]
+}

@@ -7,14 +7,11 @@ void ServerConnection::Init(queue<ServerConnection>* q) {
 void ServerConnection::SetupConnection(int fd) {
 	comm_fd = fd;
 	pthread_t thread;
-	int *testfd = (int*)malloc(sizeof(int));
-	*testfd = fd;
 
 	ServerConnection* thisSc = this;
 
 	pthread_create(&thread, NULL, &toProcess, thisSc);
 	// doStuff(fd);
-	availableServerConnections->push(*this);
 }
 
 void ServerConnection::doStuff() {
@@ -66,6 +63,8 @@ void ServerConnection::doStuff() {
 	}
 	
 	close(comm_fd);
+
+	availableServerConnections->push(*this);
 }
 
 char* ServerConnection::GenerateMessage(int message, int contentLength) {
@@ -98,4 +97,6 @@ char* ServerConnection::GenerateMessage(int message, int contentLength) {
 void* ServerConnection::toProcess(void* arg) {
 	ServerConnection* scPointer = (ServerConnection*)arg;
 	scPointer->doStuff();
+	
+	return NULL;
 }

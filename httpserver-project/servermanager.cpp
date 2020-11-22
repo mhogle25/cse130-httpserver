@@ -70,10 +70,19 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 			continue;
 		}
 		
-		ServerConnection servCon = availableServerConnections->front();
-		availableServerConnections->pop();
-		servCon.SetupConnection(comm_fd);
+		if (availableServerConnections->size() > 0) {
+			std::cout << "thread available and will be taken" << std::endl;
+			ServerConnection servCon = availableServerConnections->front();
+			availableServerConnections->pop();
+			servCon.SetupConnection(comm_fd);
+		} else {
+			// error: no more threads available
+			std::cout << "no threads available" << std::endl;
+
+		}
+
 	}
+	GlobalServerInfo::RemoveMutexInfo();
 }
 
 

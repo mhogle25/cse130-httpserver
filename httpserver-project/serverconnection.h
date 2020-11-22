@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <queue>
+#include <pthread.h>
 
 #include "httpparse.h"
 
@@ -18,12 +19,14 @@ class ServerConnection {
 public:
 	void SetupConnection(int);
 	void Init(std::queue<ServerConnection>*);
+	void doStuff();
 private: 
 	int comm_fd;
 	bool redundancy;
 	std::queue<ServerConnection>* availableServerConnections;
 	
-	char* GenerateMessage(int, int);	
+	char* GenerateMessage(int, int);
+	static void* toProcess(void*);
 };
 
 #endif

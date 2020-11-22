@@ -14,8 +14,9 @@
 #include <vector>
 #include <queue>
 
+#include <iostream>
 #include "string.h"
-#include "serverconnection.h"
+// #include "serverconnection.h"
 
 using namespace std;
 
@@ -26,15 +27,15 @@ private:
 		pthread_mutex_t mutex;
 	};
 
-	static vector<MutexInfo> mutexInfos;
-	static int mutexInfosSize;
+	static vector<MutexInfo*> mutexInfos;
 public:
 	static bool redundancy;	
+	static int mutexInfosSize;
 	
 	static bool AddMutexInfo(char*);
 	static pthread_mutex_t* GetFileMutex(char*);
 	static bool MutexInfoExists(char*);
-	static void RemoveMutexInfo(char*);
+	static void RemoveMutexInfo();
 };
 
 #endif

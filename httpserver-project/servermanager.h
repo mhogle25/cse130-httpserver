@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <pthread.h>
-
+#include <iostream>
 #include "httpparse.h"
 #include "globalserverinfo.h"
 #include "serverconnection.h"

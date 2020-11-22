@@ -1,4 +1,6 @@
 #include "serverconnection.h"
+#include <unistd.h>
+#include <sys/types.h>
 
 void ServerConnection::Init(queue<ServerConnection>* q) {
 	availableServerConnections = q;
@@ -8,15 +10,21 @@ void ServerConnection::SetupConnection(int fd) {
 	comm_fd = fd;
 	pthread_t thread;
 
+
+	std::cout << "creating thread" << std::endl;
 	ServerConnection* thisSc = this;
 
 	pthread_create(&thread, NULL, &toProcess, thisSc);
+	pthread_join(thread, NULL);
 	// doStuff(fd);
+	std::cout << "created thread id: " << pthread_self() << std::endl;
+	// availableServerConnections->push(*this);
 }
 
 void ServerConnection::doStuff() {
 	// int comm_fd = *((int*)p_fd);
 	// free(p_fd);
+	std::cout << "inside doStuff" << pthread_self() << std::endl;
 	char buf[SIZE];
 	HTTPParse* parser = new HTTPParse();
 	while(1) {

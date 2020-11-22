@@ -110,6 +110,7 @@ int HTTPParse::ParseRequestHeader(char* r) {
 }
 
 int HTTPParse::ParseRequestBody(char* r) {
+	std::cout << "inside parseReqBody" << pthread_self() << std::endl;
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
@@ -124,10 +125,11 @@ int HTTPParse::ParseRequestBody(char* r) {
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 		// return 500 if this is false?
 	}
+	std::cout << "thread id: " << pthread_self() << std::endl;
 	std::cout << "outside mutex lock - put" << filename << std::endl;
 	pthread_mutex_lock(mutx);
 	std::cout << "inside mutex - put" << std::endl;
-		
+	std::cout << "thread id inside:" <<  pthread_self() << std::endl;	
 	if (contentLength > requestLength) {
 		//ERROR, content length is bigger than body, return error code
 		return 500;
@@ -137,6 +139,7 @@ int HTTPParse::ParseRequestBody(char* r) {
 	body[contentLength] = '\0';
 	
 	int messageCode = 500;	
+	std::cout << "calling putAction" << std::endl;
 	if (GlobalServerInfo::redundancy) {
 		messageCode = PutActionRedundancy();
 	}
@@ -144,7 +147,7 @@ int HTTPParse::ParseRequestBody(char* r) {
 	
 	pthread_mutex_unlock(mutx);
 	// GlobalServerInfo::RemoveMutexInfo(filename);
-	
+	std::cout << "returning messageCode for put" << std::endl; 
 	return messageCode;
 }
 

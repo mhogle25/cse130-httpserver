@@ -62,23 +62,26 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	if (GetRequestType() == 0) {	//GET
 		// add mutex ?
 		pthread_mutex_t* mutx;
+		std::cout << "outside mutex lock - get" << filename << std::endl;
 		if (GlobalServerInfo::MutexInfoExists(filename)) {
 			mutx = GlobalServerInfo::GetFileMutex(filename);
 		} else {
+			std::cout << "adding mutex - get" << std::endl;
 			GlobalServerInfo::AddMutexInfo(filename);
 			mutx = GlobalServerInfo::GetFileMutex(filename);
 			// return 500 if this is false?
 		}
 		pthread_mutex_lock(mutx);
-
+		
+		int messageCode = 500;
 		if (GlobalServerInfo::redundancy) {
-			return GetActionRedundancy();
+			messageCode = GetActionRedundancy();
 		}
-		return GetAction();
+		messageCode = GetAction();
 
 		pthread_mutex_unlock(mutx);
-		GlobalServerInfo::RemoveMutexInfo(filename);
-
+		// GlobalServerInfo::RemoveMutexInfo(filename);
+		return messageCode;
 	}
 	
 	if (GetRequestType() == 1) {	//PUT
@@ -112,14 +115,18 @@ int HTTPParse::ParseRequestBody(char* r) {
 	requestLength = strlen(request);
 	
 	pthread_mutex_t* mutx;
+	std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
 	if (GlobalServerInfo::MutexInfoExists(filename)) {
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 	} else {
+		std::cout << "adding mutex - put" << std::endl;
 		GlobalServerInfo::AddMutexInfo(filename);
 		mutx = GlobalServerInfo::GetFileMutex(filename);
 		// return 500 if this is false?
 	}
+	std::cout << "outside mutex lock - put" << filename << std::endl;
 	pthread_mutex_lock(mutx);
+	std::cout << "inside mutex - put" << std::endl;
 		
 	if (contentLength > requestLength) {
 		//ERROR, content length is bigger than body, return error code
@@ -129,14 +136,16 @@ int HTTPParse::ParseRequestBody(char* r) {
 	strncpy(body, request, contentLength);
 	body[contentLength] = '\0';
 	
+	int messageCode = 500;	
 	if (GlobalServerInfo::redundancy) {
-		return PutActionRedundancy();
+		messageCode = PutActionRedundancy();
 	}
-	return PutAction();
+	messageCode = PutAction();
 	
 	pthread_mutex_unlock(mutx);
-	GlobalServerInfo::RemoveMutexInfo(filename);
-
+	// GlobalServerInfo::RemoveMutexInfo(filename);
+	
+	return messageCode;
 }
 
 int HTTPParse::GetRequestType() {

@@ -28,7 +28,6 @@ void ServerConnection::handleRequests(int fileDesc) {
 		if (n <= 0) break;
 		
 		//printf("%s", buf);
-			
 		int message;
 		if (parser->GetRequestType() == 1) { // PUT
 			std::cout << "before getting msg Code:" << fileDesc << std::endl;

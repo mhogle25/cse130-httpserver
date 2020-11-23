@@ -29,12 +29,12 @@ private:
 	int PutAction(int, int, int);
 	int PutActionRedundancy(int, int, int);
 	int GetAction(int);
-	int GetActionRedundancy();
+	int GetActionRedundancy(int);
 public:	
 
 	struct fileData {
 		int fileSize;
-		char fileContents[32768];
+		char fileContents[SIZE];
 	};
 	char body[SIZE];
 		
@@ -47,6 +47,8 @@ public:
 	void SetFileToSend(fileData, fileData, fileData, int *);
 	bool isValidName(char*);
 	int CountFileBytes(int);
+	int StoreData(char*, int, int);
+	void SendResponseAndBody(int, char*, int);
 };
 
 #endif

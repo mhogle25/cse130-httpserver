@@ -79,7 +79,7 @@ int HTTPParse::ParseRequestHeader(char* r, int f) {
 		
 		int messageCode = 500;
 		if (GlobalServerInfo::redundancy) {
-			messageCode = GetActionRedundancy();
+			messageCode = GetActionRedundancy(f);
 		} else {
 			messageCode = GetAction(f);
 		}
@@ -433,13 +433,12 @@ int HTTPParse::GetAction(int fdToSend) {
 	return 1;
 }
 
-int HTTPParse::GetActionRedundancy() {
+int HTTPParse::GetActionRedundancy(int fdToSend) {
 	// std::cout << "enters get redundancy" << std::endl;
 
 	bool foundFile, sameContent = true;
 	bool firstTwoAreSame, secondTwoAreSame, firstAndThirdAreSame = true;
 	struct fileData file1, file2, file3;
-	int fd;
 	
 	int toSend[3] = {0, 0, 0};
 	for (int i = 1; i < 4; i++) {
@@ -452,88 +451,112 @@ int HTTPParse::GetActionRedundancy() {
 		strcat(filePath, folderNumber);
 		strncat(filePath, "/", 1);
 		strncat(filePath, filename, 10);
-
+		std::cout << "[HTTPParse] filepath:" << filePath << std::endl;
 		// open and do stuff
-		fd = open(filePath, O_RDONLY);
-		int exists = access(filePath, F_OK);
+		int fd = open(filePath, O_RDONLY);
+		int exists = access(filePath, F_OK); 
 			
 		if (fd < 0) {
 			if (exists < 0) {
+				std::cout << "[HTTPParse] 404" << std::endl;
 				warn("%s", filename);
 				return 404;
 			} else {
+				std::cout << "[HTTPParse] 403" << std::endl;
 				warn("%s", filename);
 				return 403;
 			}
 		}
-			
-			char buffer[8];
-			body[0] = '\0';
-			while (read(fd, buffer, 1) > 0) {
-				buffer[1] = '\0';
-				strncat(body, buffer, 1);
-			} 
-			
-			contentLength = strlen(body);
-
-		if (i == 1) {
-			// std::cout << "saving to first" << std::endl;
-			file1.fileSize = contentLength;
-			strcpy(file1.fileContents, body);
-		} else if (i == 2) {
-			file2.fileSize = contentLength;
-			strcpy(file2.fileContents, body);
-		} else {
-			file3.fileSize = contentLength;
-			strcpy(file3.fileContents, body);
-		}
-
-		//printf("%s\n", body);
-		//printf("%lu\n", strlen(body));
-		//printf("%i\n", contentLength);
 		
-		if (close(fd) < 0) {
-			warn("%s", filename);
+		// count the length of it
+		int fileLength = CountFileBytes(fd);
+		// int fileLength = 10;
+		if (fileLength == -10) {
 			return 500;
 		}
+		// set the lengths
+		if (i == 1) {
+			file1.fileSize = fileLength;
+		} else if (i == 2) {
+			file2.fileSize = fileLength;
+		} else {
+			file3.fileSize = fileLength;
+		}
+	}
+	std::cout << "[HTTPParse] hits here" << std::endl;
+	int storedSuccessfully;
+	int fileSize = file1.fileSize;
+	char* file1Body = new char[fileSize];
+	storedSuccessfully = StoreData(file1Body, 1, file1.fileSize);
+	if (storedSuccessfully != 1){
+		return storedSuccessfully;
 	}
 
-	SetFileToSend(file1, file2, file3, toSend);
+	fileSize = file2.fileSize;
+	char* file2Body = new char[fileSize];
+	storedSuccessfully = StoreData(file2Body, 2, file2.fileSize);
+	if (storedSuccessfully != 1){
+		return storedSuccessfully;
+	}
+
+	fileSize = file3.fileSize;
+	char* file3Body = new char[fileSize];
+	storedSuccessfully = StoreData(file3Body, 3, file3.fileSize);
+	if (storedSuccessfully != 1){
+		return storedSuccessfully;
+	}
+	// if it returns 1 then it was successful
+	// THIS IS WRONG THOUGH KEEP TRACK OF MAJORITY
+
+	// set file to send logic, can't put in a function because I need to pass char arrays that change size
+	bool equalLengths = (file1.fileSize == file2.fileSize) && (file1.fileSize == file3.fileSize) && (file2.fileSize == file3.fileSize);
+	firstTwoAreSame = strcmp(file1Body, file2Body) == 0;
+	secondTwoAreSame = strcmp(file2Body, file3Body) == 0;
+	firstAndThirdAreSame = strcmp(file1Body, file3Body) == 0;
+
+	if (firstTwoAreSame && secondTwoAreSame && firstAndThirdAreSame) {
+		// send whichever
+		toSend[0] = 1;
+	} else {
+		// they're not the same contents
+		if (firstTwoAreSame) {
+			// std::cout << "first two are same" << std::endl;
+			// return one of the two
+			toSend[0] = 1;
+		} else if (secondTwoAreSame) {
+			// return one of the two
+			toSend[1] = 1;
+		} else if (firstAndThirdAreSame) {
+			// return one of the two
+			toSend[2] = 1;
+		}
+
+	}
+
+	delete[] file1Body;
+	delete[] file2Body;
+	delete[] file3Body;
 	bool differentFiles = true;
 	// if toSend is all 0's then non of the files are the same
 	for (int i = 0; i < 3; i++) {
-		// std::cout << "tosend" << std::endl;
-		// std::cout << i << std::endl;
-		// std::cout << toSend[i] << std::endl;
 		if (toSend[i] == 1) {
 			differentFiles = false;
 			if (i==0) {
-				// std::cout << "enters case 1" << std::endl;
-				contentLength = file1.fileSize;
-				// clear body probably
-				strcpy(body, file1.fileContents);
+				// call function to send
+				// pass char array and fd
+				SendResponseAndBody(fdToSend, file1Body, file1.fileSize);
 				break;
 			} else if (i==1) {
-				// std::cout << "enters case 2" << std::endl;
-				contentLength = file2.fileSize;
-				// clear body probably
-				strcpy(body, file2.fileContents);
+				SendResponseAndBody(fdToSend, file2Body, file2.fileSize);
 				break;
 			} else {
-				// std::cout << "enters case 3" << std::endl;
-				contentLength = file3.fileSize;
-				// clear body probably
-				strcpy(body, file3.fileContents);
+				SendResponseAndBody(fdToSend, file3Body, file3.fileSize);
 				break;
 			}
 		}
 	}
 	if (differentFiles == false) {
-		// std::cout << "check contentlength and buffer" << std::endl;
-		// std::cout << contentLength << std::endl;
-		// std::cout << body << std::endl;
-
-		return 200;
+		return 1;
 	}
 	return 500;
 }
@@ -615,27 +638,78 @@ bool HTTPParse::isValidName(char* filename) {
 }
 
 int HTTPParse::CountFileBytes(int openFD) {
-	int counter = 0;
-	char buffer[SIZE];
-	memset(buffer, 0, sizeof buffer);
-	int bytesRead = read(openFD, buffer, SIZE);
-	if (bytesRead < 0) {
-            warn("%s", "read()");
-            close(openFD);
-            return - 1; //403
-    } else if (bytesRead > 0) {
-        counter = bytesRead;
-        while (bytesRead > 0){
-            bytesRead = read(openFD, buffer, SIZE);
-            if (bytesRead < 0){
-                warn("%s", "read()");
-                // close(fd);
-                // throw403(acc_connections);
-                return -1; // 403
-            }
-            counter += bytesRead;
-        }
-        close(bytesRead);
+  int fileSize = 0;
+  char* buffer[1];
+  while (read(openFD, buffer, 1) > 0) {
+    fileSize++;
+  }
+  if(close(openFD) < 0){
+	warn("closing %s", "close()");
+  }
+  return fileSize;
+}
+
+int HTTPParse::StoreData(char* fileContents, int folderNum, int length) {
+	std::cout << "[HTTPParse] inside store data" << std::endl;
+	char filePath[16];
+	memset(filePath, 0, sizeof filePath);
+	std::string toNum = std::to_string(folderNum);
+    char const *folderNumber = toNum.c_str();
+	strncpy(filePath, "copy", 4);
+	strcat(filePath, folderNumber);
+	strncat(filePath, "/", 1);
+	strncat(filePath, filename, 10);
+
+	// open and do stuff
+	int fd = open(filePath, O_RDONLY);
+	int exists = access(filePath, F_OK); 
+			
+	if (fd < 0) {
+		if (exists < 0) {
+			warn("%s", filename);
+			return 404;
+		} else {
+			warn("%s", filename);
+			return 403;
+		}
 	}
-	return counter;
+	// return -1 if error, 0 if successful
+	char readBytesBuffer[SIZE];
+	memset(readBytesBuffer, 0, sizeof readBytesBuffer);
+	// read it and copy it into fileContents
+	int bytesRead = read(fd, readBytesBuffer, SIZE);
+	strncpy(fileContents, readBytesBuffer, bytesRead);
+	while (bytesRead > 0) {
+		bytesRead = read(fd, readBytesBuffer, SIZE);
+		if (bytesRead < 0) {
+			std::cout << "error reading" << std::endl;
+			return 500;
+		}
+		strncat(fileContents, readBytesBuffer, bytesRead);
+	}
+	return 1;
+}
+
+void HTTPParse::SendResponseAndBody(int sendfd, char* bodyToSend, int bytesToSend) {
+
+	// need: fd to send to, char buffer to send
+
+	// send 200 from here
+	std::string strLength = std::to_string(bytesToSend);
+    char const *bytesToSendChar = strLength.c_str();
+    // throw 200
+    char throw200[35 + strlen(bytesToSendChar)];
+    memset(throw200, 0, sizeof(throw200));
+    strncat(throw200, "HTTP/1.1 200 OK\r\nContent-Length: ", 35);
+    strncat(throw200, bytesToSendChar, strlen(bytesToSendChar));
+    strncat(throw200, "\r\n\r\n", 8);
+    int sentGet200 = send(sendfd, throw200, strlen(throw200), 0);
+	if (sentGet200 < 0) {
+		std::cout << "couldn't send 200 REDUNDANCY" << std::endl;
+	}
+
+	std::cout << "sent 200 REDUNDANCY" << std::endl;
+	int sentBodySuccessfully = send(sendfd, bodyToSend, strlen(bodyToSend), 0);
+	// send the char array
+	std::cout << "returning 1 REDUNDANCY" << std::endl;
 }

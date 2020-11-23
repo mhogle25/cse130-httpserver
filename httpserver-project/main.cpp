@@ -1,5 +1,3 @@
-#include <stdlib.h>
-
 #include "servermanager.h"
 
 void setValues(int argc, char **argv, int &threadCount, bool &redundancy, char *&address, int &port, int *wasFound)
@@ -75,6 +73,31 @@ int main(int argc, char **argv)
 		int wasFound[] = {1, 0, 0, 0, 0, 0};
 		setValues(argc, argv, threadCount, redundancy, address, port, wasFound);
 	}
+
+	char msg1[] = "Address: ";
+	write(STDOUT_FILENO, msg1, strlen(msg1));
+	write(STDOUT_FILENO, address, strlen(address));
+	char msg2[] = "\nPort: ";
+	write(STDOUT_FILENO, msg2, strlen(msg2));
+	char buffer[32];
+	sprintf(buffer, "%d", port);
+	write(STDOUT_FILENO, buffer, strlen(buffer));
+	memset(buffer, 0, sizeof(buffer));
+	char msg3[] = "\nThread Count: ";
+	write(STDOUT_FILENO, msg3, strlen(msg3));
+	sprintf(buffer, "%d", threadCount);
+	write(STDOUT_FILENO, buffer, strlen(buffer));
+	char msg4[] = "\nRedundancy: ";
+	write(STDOUT_FILENO, msg4, strlen(msg4));
+	if (redundancy) {
+		char msg5[] = "true\n";
+		write(STDOUT_FILENO, msg5, strlen(msg5));
+	} else {
+		char msg5[] = "false\n";
+		write(STDOUT_FILENO, msg5, strlen(msg5));
+	}
+
+
 
 	ServerManager serverManager;
 	serverManager.Setup(address, port, threadCount, redundancy);

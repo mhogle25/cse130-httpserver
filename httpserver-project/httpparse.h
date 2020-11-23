@@ -28,7 +28,7 @@ private:
 	char* GetWord();
 	int PutAction(int, int, int);
 	int PutActionRedundancy(int, int, int);
-	int GetAction();
+	int GetAction(int);
 	int GetActionRedundancy();
 public:	
 
@@ -40,12 +40,13 @@ public:
 		
 	HTTPParse();
 	~HTTPParse();
-	int ParseRequestHeader(char*);
+	int ParseRequestHeader(char*, int);
 	int ParseRequestBody(char*, int);
 	int GetRequestType();
 	int GetContentLength();
 	void SetFileToSend(fileData, fileData, fileData, int *);
 	bool isValidName(char*);
+	int CountFileBytes(int);
 };
 
 #endif

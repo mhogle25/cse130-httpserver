@@ -42,10 +42,13 @@ void ServerConnection::handleRequests(int fileDesc) {
 			delete parser;
 			parser = new HTTPParse();
 		} else {
-			message = parser->ParseRequestHeader(buf);
+			message = parser->ParseRequestHeader(buf, fileDesc);
 			
 			memset(buf, 0, sizeof(buf));	//Clear Buffer
-			if (message != 0) {
+
+			if (message == 1) {
+				// we're done
+			} else if (message != 0) { // for errors
 				char* msg = GenerateMessage(message, parser->GetContentLength());
 				if (message == 200) {
 					//printf("%s", msg);
@@ -60,7 +63,6 @@ void ServerConnection::handleRequests(int fileDesc) {
 				parser = new HTTPParse();
 			}
 		}
-		
 	}
 	
 	if (parser != NULL) {

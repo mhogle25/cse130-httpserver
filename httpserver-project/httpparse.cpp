@@ -19,7 +19,7 @@ HTTPParse::~HTTPParse() {
 	delete[] filename;
 }
 
-int HTTPParse::ParseRequestHeader(char* r) {
+int HTTPParse::ParseRequestHeader(char* r, int f) {
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
@@ -80,8 +80,9 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		int messageCode = 500;
 		if (GlobalServerInfo::redundancy) {
 			messageCode = GetActionRedundancy();
+		} else {
+			messageCode = GetAction(f);
 		}
-		messageCode = GetAction();
 
 		pthread_mutex_unlock(mutx);
 		// GlobalServerInfo::RemoveMutexInfo(filename);
@@ -343,9 +344,15 @@ int HTTPParse::PutActionRedundancy(int requestLength, int contentLength, int fde
 	return 201;
 }
 
-int HTTPParse::GetAction() {
+int HTTPParse::GetAction(int fdToSend) {
+	// NEED: recv() file descriptor so we can send
+	// return a 1 if successful and 0 if unsuccessful (500)
+
+
+	// count the file bytes
+	// send this response
+	// send the rest of the data
 	int fd = open(filename, O_RDONLY);
-	
 	int exists = access(filename, F_OK);
 	
 	if (fd < 0) {
@@ -358,26 +365,72 @@ int HTTPParse::GetAction() {
 		}
 
 	}
+
+	int bytesToSend = CountFileBytes(fd);
+	if (bytesToSend == -1) {
+		return 403;
+	}
+	close(fd);
+	fd = open(filename, O_RDONLY);
+	exists = access(filename, F_OK);
 	
-	char buffer[8];
-	body[0] = '\0';
-	while (read(fd, buffer, 1) > 0) {
-		buffer[1] = '\0';
-		strncat(body, buffer, 1);
-	} 
-	
-	contentLength = strlen(body);
-	
-	//printf("%s\n", body);
-	//printf("%lu\n", strlen(body));
-	//printf("%i\n", contentLength);
-	
-	if (close(fd) < 0) {
-		warn("%s", filename);
+	if (fd < 0) {
+		if (exists < 0) {
+			warn("%s", filename);
+			return 404;
+		} else {
+			warn("%s", filename);
+			return 403;
+		}
+
+	}
+
+	// send 200 from here
+	std::string strLength = std::to_string(bytesToSend);
+    char const *bytesToSendChar = strLength.c_str();
+    // throw 200
+    char throw200[35 + strlen(bytesToSendChar)];
+    memset(throw200, 0, sizeof(throw200));
+    strncat(throw200, "HTTP/1.1 200 OK\r\nContent-Length: ", 35);
+    strncat(throw200, bytesToSendChar, strlen(bytesToSendChar));
+    strncat(throw200, "\r\n\r\n", 8);
+    int sentGet200 = send(fdToSend, throw200, strlen(throw200), 0);
+	if (sentGet200 < 0) {
+		std::cout << "couldn't send 200" << std::endl;
+	}
+
+	std::cout << "sent 200" << std::endl;
+
+	// lseek
+	char buffer[SIZE];
+	memset(buffer, 0, sizeof buffer);
+	int bytesRead = read(fd, buffer, SIZE);
+	if (bytesRead < 0) {
 		return 500;
 	}
-	
-	return 200;
+	if (bytesRead == 0) {
+		std::cout << "I think we reached end of read already might need lseek" << std::endl;
+	}
+	int counter = bytesRead;
+	int sentSuccessfully = send(fdToSend, buffer, bytesRead, 0);
+	while (counter < bytesToSend && bytesRead !=0) {
+		bytesRead = read(fd, buffer, SIZE);
+		if (bytesRead < 0) {
+			return 500;
+		}
+		if (bytesRead == 0) {
+			break;
+		}
+		// check read
+		counter = bytesRead;
+		sentSuccessfully = send(fdToSend, buffer, bytesRead, 0);
+		if (sentSuccessfully < 0) {
+			return 500;
+		}
+	}
+	close(fd);
+	std::cout << "returning 1" << std::endl;
+	return 1;
 }
 
 int HTTPParse::GetActionRedundancy() {
@@ -559,4 +612,30 @@ bool HTTPParse::isValidName(char* filename) {
     	}
     }
     return true;
+}
+
+int HTTPParse::CountFileBytes(int openFD) {
+	int counter = 0;
+	char buffer[SIZE];
+	memset(buffer, 0, sizeof buffer);
+	int bytesRead = read(openFD, buffer, SIZE);
+	if (bytesRead < 0) {
+            warn("%s", "read()");
+            close(openFD);
+            return - 1; //403
+    } else if (bytesRead > 0) {
+        counter = bytesRead;
+        while (bytesRead > 0){
+            bytesRead = read(openFD, buffer, SIZE);
+            if (bytesRead < 0){
+                warn("%s", "read()");
+                // close(fd);
+                // throw403(acc_connections);
+                return -1; // 403
+            }
+            counter += bytesRead;
+        }
+        close(bytesRead);
+	}
+	return counter;
 }

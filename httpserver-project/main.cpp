@@ -4,7 +4,6 @@
 
 void setValues(int argc, char **argv, int &threadCount, bool &redundancy, char *&address, int &port, int *wasFound)
 {
-	bool foundThreadCountSpecifier = false;
 	for (int i = 1; i < argc; i++)
 	{
 		if (strcmp(argv[i], "-N") == 0)
@@ -12,7 +11,6 @@ void setValues(int argc, char **argv, int &threadCount, bool &redundancy, char *
 			threadCount = atoi(argv[i + 1]);
 			wasFound[i] = 1;
 			wasFound[i + 1] = 1;
-			foundThreadCountSpecifier = true;
 			i++;
 		}
 		else if (strcmp(argv[i], "-r") == 0)
@@ -20,10 +18,6 @@ void setValues(int argc, char **argv, int &threadCount, bool &redundancy, char *
 			redundancy = true;
 			wasFound[i] = 1;
 		}
-	}
-
-	if (!foundThreadCountSpecifier) {
-		threadCount = 4;
 	}
 
 	bool isFirstZero = true;
@@ -44,17 +38,21 @@ void setValues(int argc, char **argv, int &threadCount, bool &redundancy, char *
 
 int main(int argc, char **argv)
 {
-	int threadCount;
+	int threadCount = 4;
 	bool redundancy = false;
 	char *address;
 	int port = 80;
-	if (argc < 3)
+	if (argc < 2)
 	{
 		// error, not enough arguments, return
 	}
 	if (argc > 6)
 	{
 		// error, too many arguments, return
+	}
+
+	if (argc == 2) {
+		address = argv[1];
 	}
 
 	if (argc == 3) {

@@ -145,7 +145,6 @@ int HTTPParse::ParseRequestBody(char* r, int f) {
 	int messageCode = 500;	
 	if (GlobalServerInfo::redundancy) {
 		std::cout << "[HTTPParse] calling putAction redundancy" << std::endl;
-
 		messageCode = PutActionRedundancy(requestLength, contentLength, f);
 	} else {
 		std::cout << "[HTTPParse] calling putAction" << std::endl;
@@ -229,59 +228,106 @@ int HTTPParse::PutAction(int requestLength, int contentLength, int fdescriptor) 
 
 int HTTPParse::PutActionRedundancy(int requestLength, int contentLength, int fdescriptor) {
 	int fd;
-	
+	int messageCode = 500;
+
 	int hasError[3] = {0, 0, 0};
 	for (int i = 1; i < 4; i++) {
+		std::cout << "value of i: " << i << std::endl;
 		char filePath[16];
 		memset(filePath, 0, sizeof filePath);
 		std::string toNum = std::to_string(i);
-    	char const *folderNumber = toNum.c_str();
+		char const *folderNumber = toNum.c_str();
 		strncpy(filePath, "copy", 4);
 		strcat(filePath, folderNumber);
 		strncat(filePath, "/", 1);
 		strncat(filePath, filename, 10);
 
-		//"copy1/Small12345"
-		fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-		if (fd < 0) {
-			warn("%s", filename);
-			hasError[i] = 1;
-		}
-			
-		int writtenSuccessful = write(fd, body, strlen(body));
-		if (writtenSuccessful != strlen(body)) {
-			warn("%s", filename);
-			return 500;
-		}
-
-		int counter = requestLength;
-		int messageCode = 500;
-		if (counter < contentLength) {
-			while (counter < requestLength && writtenSuccessful >= 0) {
-				// keep receiving
-				char buffer[SIZE];
-				memset(buffer, 0, sizeof(buffer));
-				std::cout << "buffer" << buffer << std::endl;
-				int received = recv(fdescriptor, buffer, SIZE, 0);
-				if (received < 0){
-					warn("%s", "recv()");
-					messageCode = 500;
-					break;
-				} else if (received == 0){
-					warn("%s", "recv()");
-					break;
-				} else {
-					counter += received;
-					writtenSuccessful = write(fd, buffer, received - 1);
-				}
+		if (i == 1) {
+			//"copy1/Small12345"
+			fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+			if (fd < 0) {
+				warn("%s", filename);
+				hasError[i-1] = 1;
 			}
+				
+			int writtenSuccessful = write(fd, body, strlen(body));
+			if (writtenSuccessful != strlen(body)) {
+				warn("%s", filename);
+				hasError[i-1] = 1;
+			}
+
+			int counter = requestLength;
+			if (counter < contentLength) {
+				while (counter < contentLength && writtenSuccessful >= 0) {
+					// keep receiving
+					char buffer[SIZE];
+					memset(buffer, 0, sizeof buffer);
+					int received = recv(fdescriptor, buffer, SIZE, 0);
+					if (received < 0){
+						warn("%s", "recv()");
+						hasError[i-1] = 1;
+						break;
+					} else if (received == 0){
+						warn("%s", "recv()");
+						break;
+					} else {
+						counter += received;
+						writtenSuccessful = write(fd, buffer, received);
+						if (writtenSuccessful < 0) {
+							warn("%s", "write()");
+							hasError[i-1] = 1;
+
+						}
+					}
+				}
+				std::cout << "out of loop" << std::endl;
+			}
+		} else {
+			// get copy1 file
+			char copy1filePath[16];
+			memset(copy1filePath, 0, sizeof copy1filePath);
+			std::string toNum = std::to_string(1);
+			char const *folderNumber = toNum.c_str();
+			strncpy(copy1filePath, "copy", 4);
+			strcat(copy1filePath, folderNumber);
+			strncat(copy1filePath, "/", 1);
+			strncat(copy1filePath, filename, 10);
+			// open copy1 file
+			int firstFD = open(copy1filePath, O_RDONLY);
+			// open other file
+			fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+			char buffer[SIZE];
+			memset(buffer, 0, sizeof buffer);
+			int bytesRead = read(firstFD, buffer, SIZE);
+                if (bytesRead < 0){
+                    warn("%s", "read()");
+					hasError[i-1] = 1;
+                } else if (bytesRead > 0) {
+                    printf("greater than 0");
+                    write(fd, buffer, bytesRead);
+                    while (bytesRead > 0) {
+                        bytesRead = read(firstFD, buffer, SIZE);
+                        if (bytesRead < 0 ){
+                            warn("%s", filename);
+                            hasError[i-1] = 1;
+							break;
+                        }
+                        write(fd, buffer, bytesRead);
+                    }
+                } else {
+                    printf("is0");
+                    write(fd, buffer, bytesRead);
+                }
+				close(firstFD);
 		}
+		
 			
 		if (close(fd) < 0) {
 			warn("%s", filename);
 			hasError[i] = 1;
 		}
 	}
+	std::cout << "out of condition" << std::endl;
 	// if they're all 0's send 201
 	int numBadFiles = 0;
 	for (int i = 0; i < 3; i++) {
@@ -290,8 +336,10 @@ int HTTPParse::PutActionRedundancy(int requestLength, int contentLength, int fde
 		}
 	}
 	if (numBadFiles == 1) {
+		std::cout << "numbadfiles == 1" << std::endl;
 		return 500; // ask TA
 	}
+	std::cout << "returning" << std::endl;
 	return 201;
 }
 

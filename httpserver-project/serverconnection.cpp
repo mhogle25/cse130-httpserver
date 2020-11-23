@@ -1,6 +1,6 @@
 #include "serverconnection.h"
 
-void ServerConnection::Init(std::queue<ServerConnection*>* q, pthread_mutex_t* m, ServerConnectionData* d) {
+void ServerConnection::Init(std::queue<ServerConnection*> *q, pthread_mutex_t *m, ServerConnectionData *d) {
 	availableServerConnections = q;
 	standbyMutex = m;
 	serverConnectionData = d;

@@ -102,6 +102,12 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 
 			servCon->SetupConnection();
 		} else {
+			if (shutdown(comm_fd, SHUT_RDWR) < 0) {
+				warn("shutdown()");
+			}
+			if (close(comm_fd) < 0) {
+				warn("warn()");
+			}
 			// error: no more threads available
 			std::cout << "no threads available" << std::endl;
 
@@ -115,6 +121,15 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 		pthread_mutex_destroy(&servConStandbyMutexes[i]);
 	}
 	delete[] servConStandbyMutexes;
+
+	std::cout << "[ServerManager] About to shut down listen_fd\n";
+	if (shutdown(listen_fd, SHUT_RDWR) < 0) {
+		warn("shutdown()");
+	}
+	if (close(listen_fd) < 0) {
+		warn("close()");
+	}
+	std::cout << "[ServerManager] After shutdown listen_fd\n";
 }
 
 

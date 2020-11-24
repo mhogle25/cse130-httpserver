@@ -12,8 +12,7 @@
 #include <fcntl.h>
 
 #include "globalserverinfo.h"
-
-#define SIZE 32768
+#include "servertools.h"
 
 class HTTPParse {
 private:
@@ -30,7 +29,7 @@ private:
 	int PutActionRedundancy();
 	int GetAction();
 	int GetActionRedundancy();
-	void GetSubstringFront(char*&, char*, int);
+	bool IsValidName(char*);
 public:	
 
 	struct fileData {
@@ -47,8 +46,7 @@ public:
 	int GetRequestType();
 	int GetContentLength();
 
-
-	void SetFileToSend(fileData, fileData, fileData, int *);
+	void SetFileToSend(fileData, fileData, fileData, int*);
 };
 
 #endif

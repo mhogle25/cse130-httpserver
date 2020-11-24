@@ -30,9 +30,10 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	requestLength = strlen(request);
 	
 	requestType = GetWord();
-	
+	std::cout << "[HTTPParse] request type: " << requestType << '\n';
+
 	filename = GetWord();
-	
+	std::cout << "[HTTPParse] filename: " << filename << '\n';
 	if (filename[0] == '/') {
 		memmove(filename, filename+1, strlen(filename));
 	} else {
@@ -43,9 +44,14 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	if (strlen(filename) != 10) {
 		return 400;
 	}
+
+	if (!IsValidName(filename)) {
+		return 400;
+	}
 	
 	char* httpTitle = GetWord();
-	
+	std::cout << "[HTTPParse] title: " << httpTitle << '\n';
+
 	if (strcmp(httpTitle, "HTTP/1.1") != 0) {
 		//ERROR, not an HTTP request, return error code
 		return 400;
@@ -74,9 +80,10 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		
 		int messageCode = 500;
 		if (GlobalServerInfo::redundancy) {
-			messageCode = GetActionRedundancy();
+    		messageCode = GetActionRedundancy();
+		} else {
+      		messageCode = GetAction();
 		}
-		messageCode = GetAction();
 
 		pthread_mutex_unlock(mutx);
 		// GlobalServerInfo::RemoveMutexInfo(filename);
@@ -130,13 +137,14 @@ int HTTPParse::ParseRequestBody(char* r) {
 		return 500;
 	}
 	
-	GetSubstringFront(body, request, contentLength);
+	ServerTools::GetSubstringFront(body, request, contentLength);
 	
 	int messageCode = 500;	
 	if (GlobalServerInfo::redundancy) {
-		messageCode = PutActionRedundancy();
+    	messageCode = PutActionRedundancy();
+	} else {
+      	messageCode = PutAction();
 	}
-	messageCode = PutAction();
 	
 	pthread_mutex_unlock(mutx);
 	return messageCode;
@@ -202,7 +210,7 @@ int HTTPParse::PutActionRedundancy() {
 		fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
 		if (fd < 0) {
 			warn("%s", filename);
-			hasError[i] = 1;
+			hasError[i - 1] = 1;
 		}
 			
 		for (int i = 0; i < strlen(body); i++) {
@@ -216,7 +224,7 @@ int HTTPParse::PutActionRedundancy() {
 			
 		if (close(fd) < 0) {
 			warn("%s", filename);
-			hasError[i] = 1;
+			hasError[i - 1] = 1;
 		}
 	}
 	// if they're all 0's send 201
@@ -248,10 +256,9 @@ int HTTPParse::GetAction() {
 
 	}
 	
-	char buffer[8];
+	char buffer[2];
 	while (read(fd, buffer, 1) > 0) {
-		buffer[1] = '\0';
-		body = strcat(body, buffer);
+		ServerTools::AppendChar(body, buffer[0]);
 	} 
 	
 	contentLength = strlen(body);
@@ -301,23 +308,22 @@ int HTTPParse::GetActionRedundancy() {
 			}
 		}
 			
-			char buffer[8];
+			char buffer[2];
 			while (read(fd, buffer, 1) > 0) {
-				buffer[1] = '\0';
-				body = strcat(body, buffer);
+				ServerTools::AppendChar(body, buffer[0]);
 			} 
 			
 			contentLength = strlen(body);
 
 		if (i == 1) {
 			file1.fileSize = contentLength;
-			GetSubstringFront(file1.fileContents, body, strlen(body));
+			ServerTools::GetSubstringFront(file1.fileContents, body, strlen(body));
 		} else if (i == 2) {
 			file2.fileSize = contentLength;
-			GetSubstringFront(file2.fileContents, body, strlen(body));
+			ServerTools::GetSubstringFront(file2.fileContents, body, strlen(body));
 		} else {
 			file3.fileSize = contentLength;
-			GetSubstringFront(file3.fileContents, body, strlen(body));
+			ServerTools::GetSubstringFront(file3.fileContents, body, strlen(body));
 		}
 		
 		if (close(fd) < 0) {
@@ -335,17 +341,17 @@ int HTTPParse::GetActionRedundancy() {
 			if (i==0) {
 				contentLength = file1.fileSize;
 				// clear body probably
-				GetSubstringFront(body, file1.fileContents, strlen(file1.fileContents));
+				ServerTools::GetSubstringFront(body, file1.fileContents, strlen(file1.fileContents));
 				break;
 			} else if (i==1) {
 				contentLength = file2.fileSize;
 				// clear body probably
-				GetSubstringFront(body, file2.fileContents, strlen(file1.fileContents));
+				ServerTools::GetSubstringFront(body, file2.fileContents, strlen(file1.fileContents));
 				break;
 			} else {
 				contentLength = file3.fileSize;
 				// clear body probably
-				GetSubstringFront(body, file3.fileContents, strlen(file1.fileContents));
+				ServerTools::GetSubstringFront(body, file3.fileContents, strlen(file1.fileContents));
 				break;
 			}
 		}
@@ -379,9 +385,8 @@ char* HTTPParse::GetWord() {
 		
 		char character[2];
 		character[0] = request[index];
-		character[1] = '\0';
 		
-		word = strcat(word, character);
+		ServerTools::AppendChar(word, character[0]);
 	}
 
 	return word;
@@ -415,20 +420,18 @@ void HTTPParse::SetFileToSend(fileData f1, fileData f2, fileData f3, int *toSend
 	}
 }
 
-void HTTPParse::GetSubstringFront(char*& destination, char* source, int bytes) {
-	if (bytes > strlen(source)) {
-		warn("GetSubstringFront()");
-		return;
-	}
-
-	if (destination != NULL) {
-		delete[] destination;
-	}
-
-	destination = new char[bytes + 1];
-	for (int i = 0; i < bytes; i++) {
-		destination[i] = source[i];
-	}
-
-	destination[bytes] = '\0';
+bool HTTPParse::IsValidName(char* filename) {
+        for (unsigned long i = 0; i < strlen(filename); i++) {
+        if (isalpha(filename[i]) || isdigit(filename[i])){
+            int num = (int)filename[i] - '0'; // look at ascii chart otherwise 0 turns into 48
+            if (isdigit(filename[i])) {
+                if (num > 9 || num < 0) {
+                    return false;
+                }
+            }
+        } else {
+                return false;
+        }
+    }
+    return true;
 }

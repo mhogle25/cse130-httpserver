@@ -14,7 +14,9 @@
 #include <pthread.h>
 #include <sys/types.h>
 
+#include"servertools.h"
 #include "httpparse.h"
+#define SIZE 50
 
 class ServerConnection {
 public:
@@ -25,7 +27,7 @@ public:
 	};
 	void SetupConnection();
 	void Init(std::queue<ServerConnection*>*, pthread_mutex_t*, ServerConnectionData*);
-	void doStuff();	
+	void BeginRecv();	
 	static void* toProcess(void*);
 	int GetIndex();
 private: 
@@ -35,9 +37,6 @@ private:
 	pthread_mutex_t* standbyMutex;
 	
 	char* GenerateMessage(int, int);
-
-	void BeginRecv(ServerConnectionData*);
-	char* GetNextValue();
 };
 
 #endif

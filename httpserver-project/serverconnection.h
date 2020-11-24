@@ -35,6 +35,9 @@ private:
 	pthread_mutex_t* standbyMutex;
 	
 	char* GenerateMessage(int, int);
+
+	void BeginRecv(ServerConnectionData*);
+	char* GetNextValue();
 };
 
 #endif

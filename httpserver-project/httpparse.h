@@ -30,13 +30,15 @@ private:
 	int PutActionRedundancy();
 	int GetAction();
 	int GetActionRedundancy();
+	void GetSubstringFront(char*&, char*, int);
 public:	
 
 	struct fileData {
 		int fileSize;
-		char fileContents[32768];
+		char* fileContents;
 	};
-	char body[SIZE];
+	char* body;
+	//char body[SIZE];
 		
 	HTTPParse();
 	~HTTPParse();
@@ -44,6 +46,8 @@ public:
 	int ParseRequestBody(char*);
 	int GetRequestType();
 	int GetContentLength();
+
+
 	void SetFileToSend(fileData, fileData, fileData, int *);
 };
 

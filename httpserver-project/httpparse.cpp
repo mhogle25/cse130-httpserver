@@ -12,11 +12,16 @@ HTTPParse::HTTPParse() {
 	requestType = NULL;
 	filename = NULL;
 	contentLength = 0;
+	body = new char[1];
+	body[0] = '\0';
 }
 
 HTTPParse::~HTTPParse() {
 	delete[] requestType;
 	delete[] filename;
+	if (body != NULL) {
+		delete[] body;
+	}
 }
 
 int HTTPParse::ParseRequestHeader(char* r) {
@@ -125,8 +130,7 @@ int HTTPParse::ParseRequestBody(char* r) {
 		return 500;
 	}
 	
-	strncpy(body, request, contentLength);
-	body[contentLength] = '\0';
+	GetSubstringFront(body, request, contentLength);
 	
 	int messageCode = 500;	
 	if (GlobalServerInfo::redundancy) {
@@ -162,9 +166,13 @@ int HTTPParse::PutAction() {
 		return 403;
 	}
 	
-	if (write(fd, body, strlen(body)) != strlen(body)) {
-		warn("%s", filename);
-		return 500;
+	for (int i = 0; i < strlen(body); i++) {
+		char buf[1];
+		buf[0] = body[i];
+		if (write(fd, buf, 1) < 1) {
+			warn("%s", filename);
+			return 500;
+		}
 	}
 	
 	if (close(fd) < 0) {
@@ -186,7 +194,7 @@ int HTTPParse::PutActionRedundancy() {
 		std::string toNum = std::to_string(i);
     	char const *folderNumber = toNum.c_str();
 		strncpy(filePath, "copy", 4);
-		strcat(filePath, folderNumber);
+		strncat(filePath, folderNumber, strlen(folderNumber));
 		strncat(filePath, "/", 1);
 		strncat(filePath, filename, 10);
 
@@ -197,9 +205,13 @@ int HTTPParse::PutActionRedundancy() {
 			hasError[i] = 1;
 		}
 			
-		if (write(fd, body, strlen(body)) != strlen(body)) {
-			warn("%s", filename);
-			hasError[i] = 1;
+		for (int i = 0; i < strlen(body); i++) {
+			char buf[1];
+			buf[0] = body[i];
+			if (write(fd, buf, 1) < 1) {
+				warn("%s", filename);
+				return 500;
+			}
 		}
 			
 		if (close(fd) < 0) {
@@ -237,10 +249,9 @@ int HTTPParse::GetAction() {
 	}
 	
 	char buffer[8];
-	body[0] = '\0';
 	while (read(fd, buffer, 1) > 0) {
 		buffer[1] = '\0';
-		strncat(body, buffer, 1);
+		body = strcat(body, buffer);
 	} 
 	
 	contentLength = strlen(body);
@@ -272,7 +283,7 @@ int HTTPParse::GetActionRedundancy() {
 		std::string toNum = std::to_string(i);
     	char const *folderNumber = toNum.c_str();
 		strncpy(filePath, "copy", 4);
-		strcat(filePath, folderNumber);
+		strncat(filePath, folderNumber, strlen(folderNumber));
 		strncat(filePath, "/", 1);
 		strncat(filePath, filename, 10);
 
@@ -291,23 +302,22 @@ int HTTPParse::GetActionRedundancy() {
 		}
 			
 			char buffer[8];
-			body[0] = '\0';
 			while (read(fd, buffer, 1) > 0) {
 				buffer[1] = '\0';
-				strncat(body, buffer, 1);
+				body = strcat(body, buffer);
 			} 
 			
 			contentLength = strlen(body);
 
 		if (i == 1) {
 			file1.fileSize = contentLength;
-			strcpy(file1.fileContents, body);
+			GetSubstringFront(file1.fileContents, body, strlen(body));
 		} else if (i == 2) {
 			file2.fileSize = contentLength;
-			strcpy(file2.fileContents, body);
+			GetSubstringFront(file2.fileContents, body, strlen(body));
 		} else {
 			file3.fileSize = contentLength;
-			strcpy(file3.fileContents, body);
+			GetSubstringFront(file3.fileContents, body, strlen(body));
 		}
 		
 		if (close(fd) < 0) {
@@ -325,17 +335,17 @@ int HTTPParse::GetActionRedundancy() {
 			if (i==0) {
 				contentLength = file1.fileSize;
 				// clear body probably
-				strcpy(body, file1.fileContents);
+				GetSubstringFront(body, file1.fileContents, strlen(file1.fileContents));
 				break;
 			} else if (i==1) {
 				contentLength = file2.fileSize;
 				// clear body probably
-				strcpy(body, file2.fileContents);
+				GetSubstringFront(body, file2.fileContents, strlen(file1.fileContents));
 				break;
 			} else {
 				contentLength = file3.fileSize;
 				// clear body probably
-				strcpy(body, file3.fileContents);
+				GetSubstringFront(body, file3.fileContents, strlen(file1.fileContents));
 				break;
 			}
 		}
@@ -403,4 +413,22 @@ void HTTPParse::SetFileToSend(fileData f1, fileData f2, fileData f3, int *toSend
 			toSend[2] = 1;
 		}
 	}
+}
+
+void HTTPParse::GetSubstringFront(char*& destination, char* source, int bytes) {
+	if (bytes > strlen(source)) {
+		warn("GetSubstringFront()");
+		return;
+	}
+
+	if (destination != NULL) {
+		delete[] destination;
+	}
+
+	destination = new char[bytes + 1];
+	for (int i = 0; i < bytes; i++) {
+		destination[i] = source[i];
+	}
+
+	destination[bytes] = '\0';
 }

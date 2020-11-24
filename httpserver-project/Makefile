@@ -1,4 +1,4 @@
-httpserver: main.o servermanager.o httpparse.o globalserverinfo.o serverconnection.o
+httpserver: main.o servermanager.o httpparse.o globalserverinfo.o serverconnection.o 
 	g++ -g main.o servermanager.o httpparse.o globalserverinfo.o serverconnection.o -o httpserver -lpthread
 
 main.o: main.cpp

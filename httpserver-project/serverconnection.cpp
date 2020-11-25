@@ -86,7 +86,7 @@ void ServerConnection::BeginRecv() {
 			body[0] = '\0';
 			int index = 0;
 			int counter = 0;
-			std::string testString;
+			std::string content;
 			while (1) {
 				memset(buffer, 0, sizeof buffer);
 
@@ -108,14 +108,14 @@ void ServerConnection::BeginRecv() {
 			        strcpy(fullBody, ServerTools::AppendString(body, buffer, counter));
 				fullBody[counter] = '\0';
 			        std::string dest(fullBody);
-				testString += dest;
+				content += dest;
 
 				if (counter >= cl) {
-                                       break;
-                                }
+                    break;
+                }
 			}
-			char *bodyToSend = new char[testString.size() -1];
-			strcpy(bodyToSend, testString.c_str());
+			char *bodyToSend = new char[content.size() -1];
+			strcpy(bodyToSend, content.c_str());
 			//parse & handle the body
 			int msg = parser->ParseRequestBody(bodyToSend);
 			//send the response

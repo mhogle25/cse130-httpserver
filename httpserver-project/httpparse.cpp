@@ -12,16 +12,13 @@ HTTPParse::HTTPParse() {
 	requestType = NULL;
 	filename = NULL;
 	contentLength = 0;
-	body = new char[1];
-	body[0] = '\0';
+	fd = -1;
+	bytesUsed = 0;
 }
 
 HTTPParse::~HTTPParse() {
 	delete[] requestType;
 	delete[] filename;
-	if (body != NULL) {
-		delete[] body;
-	}
 }
 
 int HTTPParse::ParseRequestHeader(char* r) {
@@ -65,28 +62,9 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	}
 	
 	if (GetRequestType() == 0) {	//GET
-		// add mutex ?
-		pthread_mutex_t* mutx;
-		//std::cout << "outside mutex lock - get" << filename << std::endl;
-		if (GlobalServerInfo::MutexInfoExists(filename)) {
-			mutx = GlobalServerInfo::GetFileMutex(filename);
-		} else {
-			//std::cout << "adding mutex - get" << std::endl;
-			GlobalServerInfo::AddMutexInfo(filename);
-			mutx = GlobalServerInfo::GetFileMutex(filename);
-			// return 500 if this is false?
-		}
-		pthread_mutex_lock(mutx);
 		
-		int messageCode = 500;
-		if (GlobalServerInfo::redundancy) {
-    		messageCode = GetActionRedundancy();
-		} else {
-      		messageCode = GetAction();
-		}
+		int messageCode = GetFileContentLength();
 
-		pthread_mutex_unlock(mutx);
-		// GlobalServerInfo::RemoveMutexInfo(filename);
 		return messageCode;
 	}
 	
@@ -102,6 +80,8 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		
 		if (index < requestLength) {
 			contentLength = atoi(GetWord());
+		} else {
+			contentLength = -1;	//This case is for when no PUT content length is sent
 		}
 		
 		delete[] contentLengthHeader;
@@ -111,11 +91,198 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	return 0;
 }
 
+int HTTPParse::PutAction(int s) {
+	if (fd < 0) {
+		fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+		if (fd < 0) {
+			warn("%s", filename);
+			return 403;
+		}
+	}
+
+	int n = write(fd, body, s);
+	bytesUsed += n;
+	memset(body, 0, sizeof body);
+
+	if (bytesUsed >= contentLength) {
+		if (close(fd) < 0) {
+			warn("%s", filename);
+			return 500;
+		}
+	}
+
+	return 201;
+}
+
+int HTTPParse::GetAction() {
+	if (fd < 0) {
+		fd = open(filename, O_RDONLY);
+	
+		if (fd < 0) {
+			warn("%s", filename);
+			return -1;
+		}
+	}
+
+	int n = read(fd, body, SIZE);
+	bytesUsed += n;
+
+	if (bytesUsed >= contentLength) {
+		if (close(fd) < 0) {
+			warn("%s", filename);
+			return -1;
+		}
+	}
+
+	return n;
+}
+
+int HTTPParse::GetRequestType() {
+	if (requestType == NULL) {
+		return -1;
+	}
+
+	if (strcmp(requestType, "GET") == 0) {
+		return 0;
+	}
+	
+	if (strcmp(requestType, "PUT") == 0) {
+		return 1;
+	}
+	
+	return -1;
+}
+
+//Function will return the next substring before a space or newline, starting at index 0
+//Index tracked by HttpParse
+char* HTTPParse::GetWord() {
+	char* word = new char[1];
+	word[0] = '\0';
+
+	if (index >= requestLength) {
+		return word;
+	}
+
+	for ( ; index < requestLength; index++) {
+		if (request[index] == '\r') {
+			continue;
+		}
+		
+		if (request[index] == '\n' || request[index] == ' ') {
+			index++;
+			break;
+		}
+		
+		char character[2];
+		character[0] = request[index];
+		
+		ServerTools::AppendChar(word, character[0]);
+	}
+
+	return word;
+}
+
+int HTTPParse::GetFileContentLength() {
+	pthread_mutex_t* mutx;
+	if (GlobalServerInfo::MutexInfoExists(filename)) {
+		mutx = GlobalServerInfo::GetFileMutex(filename);
+	} else {
+		GlobalServerInfo::AddMutexInfo(filename);
+		mutx = GlobalServerInfo::GetFileMutex(filename);
+	}
+	pthread_mutex_lock(mutx);
+
+	int fileDescriptor = open(filename, O_RDONLY);
+
+	int exists = access(filename, F_OK);
+
+	if (fileDescriptor < 0) {
+		if (exists < 0) {
+			warn("%s", filename);
+			return 404;
+		} else {
+			warn("%s", filename);
+			return 403;
+		}
+
+	}
+	
+	int n;
+	int bytesRead = 0;
+	do {
+		n = read(fileDescriptor, body, SIZE);
+		bytesRead += n;
+	} while (n > 0);
+
+
+
+	if (close(fileDescriptor) < 0) {
+		warn("%s", filename);
+		return 500;
+	}
+	contentLength = bytesRead;
+
+	pthread_mutex_unlock(mutx);
+	
+	return 200;
+}
+
+int HTTPParse::GetContentLength() {
+	return contentLength;
+}
+
+char* HTTPParse::GetFilename() {
+	return filename;
+}
+
+void HTTPParse::SetFileToSend(fileData f1, fileData f2, fileData f3, int *toSend) {
+	bool equalLengths = (f1.fileSize == f2.fileSize) && (f1.fileSize == f3.fileSize) && (f2.fileSize == f3.fileSize);
+	bool firstTwoAreSame = strcmp(f1.fileContents, f2.fileContents) == 0;
+	bool secondTwoAreSame = strcmp(f2.fileContents, f3.fileContents) == 0;
+	bool firstAndThirdAreSame = strcmp(f1.fileContents, f3.fileContents) == 0;
+
+	if (firstTwoAreSame && secondTwoAreSame && firstAndThirdAreSame) {
+		// send whichever
+		toSend[0] = 1;
+	} else {
+		// they're not the same contents
+		if (firstTwoAreSame) {
+			// return one of the two
+			toSend[0] = 1;
+		} else if (secondTwoAreSame) {
+			// return one of the two
+			toSend[1] = 1;
+		} else if (firstAndThirdAreSame) {
+			// return one of the two
+			toSend[2] = 1;
+		}
+	}
+}
+
+bool HTTPParse::IsValidName(char* filename) {
+        for (unsigned long i = 0; i < strlen(filename); i++) {
+        if (isalpha(filename[i]) || isdigit(filename[i])){
+            int num = (int)filename[i] - '0'; // look at ascii chart otherwise 0 turns into 48
+            if (isdigit(filename[i])) {
+                if (num > 9 || num < 0) {
+                    return false;
+                }
+            }
+        } else {
+                return false;
+        }
+    }
+    return true;
+}
+
+/*
 int HTTPParse::ParseRequestBody(char* r) {
 	//std::cout << "inside parseReqBody" << pthread_self() << std::endl;
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
+	std::cout << "[HTTPParse] request: " << request << '\n';
+	std::cout << "[HTTPParse] requestLength: " << requestLength << '\n';
 	
 	pthread_mutex_t* mutx;
 	//std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
@@ -137,9 +304,15 @@ int HTTPParse::ParseRequestBody(char* r) {
 		return 500;
 	}
 	
-	ServerTools::GetSubstringFront(body, request, contentLength);
-	
-	int messageCode = 500;	
+	if (contentLength < requestLength) {
+		ServerTools::GetSubstringFront(body, request, contentLength);
+	} else {
+		body = request;
+	}
+
+	std::cout << "[HTTPParse] body: " << body << '\n';
+
+	int messageCode = 500;
 	if (GlobalServerInfo::redundancy) {
     	messageCode = PutActionRedundancy();
 	} else {
@@ -148,22 +321,6 @@ int HTTPParse::ParseRequestBody(char* r) {
 	
 	pthread_mutex_unlock(mutx);
 	return messageCode;
-}
-
-int HTTPParse::GetRequestType() {
-	if (requestType == NULL) {
-		return -1;
-	}
-
-	if (strcmp(requestType, "GET") == 0) {
-		return 0;
-	}
-	
-	if (strcmp(requestType, "PUT") == 0) {
-		return 1;
-	}
-	
-	return -1;
 }
 
 int HTTPParse::PutAction() {
@@ -362,76 +519,4 @@ int HTTPParse::GetActionRedundancy() {
 	}
 	return 500;
 }
-
-//Function will return the next substring before a space or newline, starting at index 0
-//Index tracked by HttpParse
-char* HTTPParse::GetWord() {
-	char* word = new char[1];
-	word[0] = '\0';
-
-	if (index >= requestLength) {
-		return word;
-	}
-
-	for ( ; index < requestLength; index++) {
-		if (request[index] == '\r') {
-			continue;
-		}
-		
-		if (request[index] == '\n' || request[index] == ' ') {
-			index++;
-			break;
-		}
-		
-		char character[2];
-		character[0] = request[index];
-		
-		ServerTools::AppendChar(word, character[0]);
-	}
-
-	return word;
-}
-
-int HTTPParse::GetContentLength() {
-	return contentLength;
-}
-
-void HTTPParse::SetFileToSend(fileData f1, fileData f2, fileData f3, int *toSend) {
-	bool equalLengths = (f1.fileSize == f2.fileSize) && (f1.fileSize == f3.fileSize) && (f2.fileSize == f3.fileSize);
-	bool firstTwoAreSame = strcmp(f1.fileContents, f2.fileContents) == 0;
-	bool secondTwoAreSame = strcmp(f2.fileContents, f3.fileContents) == 0;
-	bool firstAndThirdAreSame = strcmp(f1.fileContents, f3.fileContents) == 0;
-
-	if (firstTwoAreSame && secondTwoAreSame && firstAndThirdAreSame) {
-		// send whichever
-		toSend[0] = 1;
-	} else {
-		// they're not the same contents
-		if (firstTwoAreSame) {
-			// return one of the two
-			toSend[0] = 1;
-		} else if (secondTwoAreSame) {
-			// return one of the two
-			toSend[1] = 1;
-		} else if (firstAndThirdAreSame) {
-			// return one of the two
-			toSend[2] = 1;
-		}
-	}
-}
-
-bool HTTPParse::IsValidName(char* filename) {
-        for (unsigned long i = 0; i < strlen(filename); i++) {
-        if (isalpha(filename[i]) || isdigit(filename[i])){
-            int num = (int)filename[i] - '0'; // look at ascii chart otherwise 0 turns into 48
-            if (isdigit(filename[i])) {
-                if (num > 9 || num < 0) {
-                    return false;
-                }
-            }
-        } else {
-                return false;
-        }
-    }
-    return true;
-}
+*/

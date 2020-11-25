@@ -24,6 +24,10 @@ public:
 		int index;
 		int comm_fd;
 		ServerConnection* thisSC;
+		~ServerConnectionData() {
+			if (thisSC != NULL) 
+				delete thisSC;
+		}
 	};
 	void SetupConnection();
 	void Init(std::queue<ServerConnection*>*, pthread_mutex_t*, ServerConnectionData*);
@@ -31,12 +35,16 @@ public:
 	static void* toProcess(void*);
 	int GetIndex();
 private: 
+	struct ParseHeaderInfo {
+		bool parseHeaderComplete = false;
+		bool badRequest = false;
+	};
 	ServerConnectionData* serverConnectionData;
-	bool redundancy;
 	std::queue<ServerConnection*>* availableServerConnections;
 	pthread_mutex_t* standbyMutex;
 	
 	char* GenerateMessage(int, int);
+	static void* TimeoutBadRequest(void*);
 };
 
 #endif

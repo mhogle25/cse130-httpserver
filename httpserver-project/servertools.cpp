@@ -14,22 +14,6 @@ void ServerTools::AppendChar(char*& string, char character) {
 }
 
 char* ServerTools::AppendString(char*& destination, char* suffix, int count) {
-	std::cout << "[server tools] inside append string" << std::endl;
-	/*int destinationLength = strlen(destination);
-    int suffixLength = strlen(suffix);
-
-	char* temp = destination;
-    int i = 0;
-	destination = new char[destinationLength + suffixLength + 1];
-	for (; i < destinationLength; i++) {
-		destination[i] = temp[i];
-	}
-    delete[] temp;
-
-    for (; i < suffixLength; i++) {
-		destination[i] = suffix[i];
-	}
-	destination[destinationLength + suffixLength] = '\0';*/
 	char* toReturn = new char[count];
 	strncpy(toReturn, destination, strlen(destination));
 	strncat(toReturn, suffix, strlen(suffix));

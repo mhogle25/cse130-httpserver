@@ -10,7 +10,7 @@
 class ServerTools {
 public:
     static void AppendChar(char*&, char);
-    static void AppendString(char*&, char*);
+    static char* AppendString(char*&, char*, int);
     static void GetSubstringFront(char*&, char*, int);
 };
 

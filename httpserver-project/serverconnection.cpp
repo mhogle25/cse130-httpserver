@@ -1,4 +1,5 @@
 #include "serverconnection.h"
+#include <string.h>
 
 void ServerConnection::Init(std::queue<ServerConnection*> *q, pthread_mutex_t *m, ServerConnectionData* d) {
 	availableServerConnections = q;
@@ -84,23 +85,25 @@ void ServerConnection::BeginRecv() {
 			char* body = new char[1];
 			body[0] = '\0';
 			int index = 0;
+			int counter = 0;
+			std::string testString;
 			while (1) {
-				memset(buffer, 0, sizeof (char)*(SIZE + 1));
-				if (cl >= 0) {
+				memset(buffer, 0, sizeof buffer);
+				/*if (cl >= 0) {
 					if (index*SIZE >= cl) {
 						break;
 					}
-				}
+				}*/
 
 				int n = recv(serverConnectionData->comm_fd, buffer, SIZE, 0);
 				index++;
-
-				int newN;
+				counter +=n;
+				/*int newN;
 				if ((SIZE*index - cl) < SIZE) {
 					newN = SIZE - (SIZE*index - cl);
 				} else {
 					newN = n;
-				}
+				}*/
 
 				if (n < 0) {
 					char* message = GenerateMessage(500, 0);
@@ -112,16 +115,34 @@ void ServerConnection::BeginRecv() {
 					break;
 
 
-				buffer[newN] = '\0';
-				std::cout << buffer << "\n";
-				std::cout << n << "\n";
-				std::cout << newN << "\n";
-				ServerTools::AppendString(body, buffer);
-			}
+				//buffer[newN] = '\0';
+				//std::cout << buffer << "\n";
+				//std::cout << n << "\n";
+				//std::cout << newN << "\n";
+				char* fullBody = new char[counter + 1];
+			       strcpy(fullBody, ServerTools::AppendString(body, buffer, counter));
+			       /*if (counter > cl) {
+				       std::cout << "counter off" << std::endl;
+				       break;
+				}*/
+				fullBody[counter] = '\0';
+				std::cout << "so far:" << fullBody << std::endl;
+				//std::cout << "check for null terminator" << sizeof fullBody << std::endl;
+			       std::string dest(fullBody);
+				testString += dest;
 
-			std::cout << body;
+				//std::cout << "[SERVERCONNECTION] testString: " << testString << std::endl;
+
+				if (counter >= cl) {
+                                       std::cout << "counter off" << std::endl;
+                                       break;
+                                }
+			}
+			char *bodyToSend = new char[testString.size() -1];
+			strcpy(bodyToSend, testString.c_str());
+			std::cout << "Check Conversion: " << bodyToSend << std::endl;
 			//parse & handle the body
-			int msg = parser->ParseRequestBody(body);
+			int msg = parser->ParseRequestBody(bodyToSend);
 			//send the response
 			char* message = GenerateMessage(msg, 0);
 			send(serverConnectionData->comm_fd, message, strlen(message), 0);

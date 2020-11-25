@@ -1,4 +1,5 @@
 #include"servertools.h"
+#include <iostream>
 
 void ServerTools::AppendChar(char*& string, char character) {
 	int strLength = strlen(string);
@@ -12,8 +13,9 @@ void ServerTools::AppendChar(char*& string, char character) {
 	string[strLength + 1] = '\0';
 }
 
-void ServerTools::AppendString(char*& destination, char* suffix) {
-    int destinationLength = strlen(destination);
+char* ServerTools::AppendString(char*& destination, char* suffix, int count) {
+	std::cout << "[server tools] inside append string" << std::endl;
+	/*int destinationLength = strlen(destination);
     int suffixLength = strlen(suffix);
 
 	char* temp = destination;
@@ -27,7 +29,12 @@ void ServerTools::AppendString(char*& destination, char* suffix) {
     for (; i < suffixLength; i++) {
 		destination[i] = suffix[i];
 	}
-	destination[destinationLength + suffixLength] = '\0';
+	destination[destinationLength + suffixLength] = '\0';*/
+	char* toReturn = new char[count];
+	strncpy(toReturn, destination, strlen(destination));
+	strncat(toReturn, suffix, strlen(suffix));
+
+	return toReturn;
 }
 
 void ServerTools::GetSubstringFront(char*& destination, char* source, int bytes) {

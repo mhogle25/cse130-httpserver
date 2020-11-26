@@ -13,7 +13,7 @@
 
 #include "globalserverinfo.h"
 #include "servertools.h"
-#define SIZE 50
+#define SIZE 32768
 
 class HTTPParse {
 private:
@@ -25,12 +25,13 @@ private:
 	int contentLength;
 	char* filename;
 
-	int fd;
-	int bytesUsed;
+	int fd[3];
+	int bytesUsed[3];
+	int correctFileIndex;
 	
 	char* GetWord();
 	bool IsValidName(char*);
-	int GetFileContentLength();
+	int SetupGetRequest();
 public:	
 
 	struct fileData {
@@ -38,7 +39,7 @@ public:
 		char* fileContents;
 	};
 
-	char body[SIZE];
+	char body[SIZE + 1];
 		
 	HTTPParse();
 	~HTTPParse();
@@ -48,8 +49,6 @@ public:
 	int GetRequestType();
 	int GetContentLength();
 	char* GetFilename();
-
-	void SetFileToSend(fileData, fileData, fileData, int*);
 };
 
 #endif

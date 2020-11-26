@@ -106,7 +106,7 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 				warn("shutdown()");
 			}
 			if (close(comm_fd) < 0) {
-				warn("warn()");
+				warn("close()");
 			}
 			// error: no more threads available
 			std::cout << "no threads available" << std::endl;

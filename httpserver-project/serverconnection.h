@@ -16,7 +16,7 @@
 
 #include"servertools.h"
 #include "httpparse.h"
-#define SIZE 50
+#define SIZE 32768
 
 class ServerConnection {
 public:

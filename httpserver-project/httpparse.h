@@ -10,9 +10,11 @@
 #include <err.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "globalserverinfo.h"
 #include "servertools.h"
+#define SIZE 32768
 
 class HTTPParse {
 private:
@@ -21,32 +23,33 @@ private:
 	int requestLength;
 	
 	char* requestType;
-	char* filename;
 	int contentLength;
+	char* filename;
+
+	int fd[3];
+	int bytesUsed[3];
+	int correctFileIndex;
 	
 	char* GetWord();
-	int PutAction();
-	int PutActionRedundancy();
-	int GetAction();
-	int GetActionRedundancy();
 	bool IsValidName(char*);
+	int SetupGetRequest();
 public:	
 
 	struct fileData {
 		int fileSize;
 		char* fileContents;
 	};
-	char* body;
-	//char body[SIZE];
+
+	char body[SIZE + 1];
 		
 	HTTPParse();
 	~HTTPParse();
 	int ParseRequestHeader(char*);
-	int ParseRequestBody(char*);
+	int PutAction(int);
+	int GetAction();
 	int GetRequestType();
 	int GetContentLength();
-
-	void SetFileToSend(fileData, fileData, fileData, int*);
+	char* GetFilename();
 };
 
 #endif

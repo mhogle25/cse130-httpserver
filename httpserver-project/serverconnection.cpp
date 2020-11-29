@@ -15,6 +15,10 @@ void ServerConnection::BeginRecv() {
 	while (1) {
 		pthread_mutex_lock(standbyMutex);
 
+		ParseHeaderInfo* phi = new ParseHeaderInfo();
+		pthread_t HeaderBadRequestThread;
+		pthread_create(&HeaderBadRequestThread, NULL, TimeoutBadRequest, phi);
+
 		int newlineCount = 0;
 		char* header = new char[1];
 		header[0] = '\0';
@@ -29,6 +33,10 @@ void ServerConnection::BeginRecv() {
 			}
 
 			if (n == 0) {
+				break;
+			}
+
+			if (phi->badRequest) {
 				break;
 			}
 
@@ -58,81 +66,93 @@ void ServerConnection::BeginRecv() {
 			
 		}
 
-		int msg;
-		HTTPParse* parser = new HTTPParse();
-		msg = parser->ParseRequestHeader(header);
+		phi->parseHeaderComplete = true;
 
-		if (msg != 0) {
-			if (msg == 200) {
-				//send the response
-				char* message = GenerateMessage(msg, parser->GetContentLength());
-				send(serverConnectionData->comm_fd, message, strlen(message), 0);
-				//send the body
-				for (int i = 0; i < parser->GetContentLength(); i++) {
-					char b[1];
-					b[0] = parser->body[i];
-					send(serverConnectionData->comm_fd, b, 1, 0);
+		if (phi->badRequest) { //
+			char* message = GenerateMessage(400, 0);
+			send(serverConnectionData->comm_fd, message, strlen(message), 0);
+		} else {
+			int msg;
+			HTTPParse* parser = new HTTPParse();
+			msg = parser->ParseRequestHeader(header);
+
+			if (msg != 0) {
+				if (msg == 200) {	//GET Request
+					//send the response
+					int contentLength = parser->GetContentLength();
+					char* message = GenerateMessage(msg, contentLength);
+					send(serverConnectionData->comm_fd, message, strlen(message), 0);
+					//send the body
+
+					pthread_mutex_t* mutx;
+					if (GlobalServerInfo::MutexInfoExists(parser->GetFilename())) {
+						mutx = GlobalServerInfo::GetFileMutex(parser->GetFilename());
+					} else {
+						GlobalServerInfo::AddMutexInfo(parser->GetFilename());
+						mutx = GlobalServerInfo::GetFileMutex(parser->GetFilename());
+						// return 500 if this is false?
+					}
+					pthread_mutex_lock(mutx);	//Begin Critical Region
+
+					int bytesRead = 0;
+					while(1) {
+						int n = parser->GetAction();
+						send(serverConnectionData->comm_fd, parser->body, n, 0);
+						bytesRead += n;
+						if (bytesRead >= contentLength) {
+							break;
+						}
+					}
+
+					pthread_mutex_unlock(mutx);	//End Critical Region
+
+				} else {	//Header Parsing Error
+					//send the error
+					char* message = GenerateMessage(msg, 0);
+					send(serverConnectionData->comm_fd, message, strlen(message), 0);
+				}
+			} else {	//PUT request
+				pthread_mutex_t* mutx;
+				if (GlobalServerInfo::MutexInfoExists(parser->GetFilename())) {
+					mutx = GlobalServerInfo::GetFileMutex(parser->GetFilename());
+				} else {
+					GlobalServerInfo::AddMutexInfo(parser->GetFilename());
+					mutx = GlobalServerInfo::GetFileMutex(parser->GetFilename());
+					// return 500 if this is false?
+				}
+				pthread_mutex_lock(mutx);	//Begin Critical Region
+
+				//recv the body
+				int cl = parser->GetContentLength();
+				int bytesRead = 0;
+
+				while (1) {
+					int n = recv(serverConnectionData->comm_fd, parser->body, SIZE, 0);
+					msg = parser->PutAction(n);
+					bytesRead += n;
+					if (cl > 0) {
+						if (bytesRead >= cl) {
+							break;
+						}
+					}
 				}
 
-			} else {
-				//send the error
+				pthread_mutex_unlock(mutx);	//End Critical Region
+				
 				char* message = GenerateMessage(msg, 0);
 				send(serverConnectionData->comm_fd, message, strlen(message), 0);
+
 			}
-		} else {
-			//recv the body
-			int cl = parser->GetContentLength();
-			char* body = new char[1];
-			body[0] = '\0';
-			int index = 0;
-			int counter = 0;
-			std::string content;
-			while (1) {
-				memset(buffer, 0, sizeof buffer);
 
-				int n = recv(serverConnectionData->comm_fd, buffer, SIZE, 0);
-				index++;
-				counter +=n;
-
-				if (n < 0) {
-					char* message = GenerateMessage(500, 0);
-					send (serverConnectionData->comm_fd, message, strlen(message), 0);
-					break;
-				}
-
-				if (n == 0)
-					break;
-
-
-				char* fullBody = new char[counter + 1];
-			        strcpy(fullBody, ServerTools::AppendString(body, buffer, counter));
-				fullBody[counter] = '\0';
-			        std::string dest(fullBody);
-				content += dest;
-
-				if (counter >= cl) {
-                	break;
-                }
-			}
-			char *bodyToSend = new char[content.size() -1];
-			strcpy(bodyToSend, content.c_str());
-			//parse & handle the body
-			int msg = parser->ParseRequestBody(bodyToSend);
-			//send the response
-			char* message = GenerateMessage(msg, 0);
-			send(serverConnectionData->comm_fd, message, strlen(message), 0);
+			delete parser;
 		}
 
-		delete parser;
-
-		std::cout << "[ServerConnection] IsConnectionClosed: " << '\n';
 		if (shutdown(serverConnectionData->comm_fd, SHUT_RDWR) < 0) {
 			warn("shutdown()");
 		}
 		if (close(serverConnectionData->comm_fd) < 0) {
 			warn("close()");
 		}
-		std::cout << "[ServerConnection] IsConnectionClosed: " << '\n';
 
 		pthread_mutex_unlock(standbyMutex);
 
@@ -178,4 +198,15 @@ void* ServerConnection::toProcess(void* arg) {
 
 int ServerConnection::GetIndex() {
 	return serverConnectionData->index;
+}
+
+void* ServerConnection::TimeoutBadRequest(void* phi) {
+	ParseHeaderInfo* parseHeaderInfo = (ParseHeaderInfo*) phi;
+	sleep(20000);
+	if (parseHeaderInfo->parseHeaderComplete) {
+		return NULL;
+	}
+
+	parseHeaderInfo->badRequest = true;
+	return NULL;
 }

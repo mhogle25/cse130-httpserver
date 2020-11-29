@@ -35,6 +35,7 @@ unsigned long ServerManager::GetAddress(char *name) {
 	}
 	res = ((struct sockaddr_in*) info->ai_addr)->sin_addr.s_addr;
 	freeaddrinfo(info);
+	std::cout << "res: " << res << '\n';
 	return res;
 }
 
@@ -106,7 +107,7 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 				warn("shutdown()");
 			}
 			if (close(comm_fd) < 0) {
-				warn("warn()");
+				warn("close()");
 			}
 			// error: no more threads available
 			std::cout << "no threads available" << std::endl;
@@ -120,12 +121,19 @@ void ServerManager::Setup(char* address, unsigned short port, int threadCount, b
 	for (int i = 0; i < threadCount; i++) {
 		pthread_mutex_destroy(&servConStandbyMutexes[i]);
 	}
-	delete[] servConStandbyMutexes;
+
+	if (servConStandbyMutexes != NULL)
+		delete[] servConStandbyMutexes;
+	if (threads != NULL)
+		delete[] threads;
+	if (serverConnectionDatas != NULL)
+		delete[] serverConnectionDatas;
 
 	std::cout << "[ServerManager] About to shut down listen_fd\n";
 	if (shutdown(listen_fd, SHUT_RDWR) < 0) {
 		warn("shutdown()");
 	}
+
 	if (close(listen_fd) < 0) {
 		warn("close()");
 	}

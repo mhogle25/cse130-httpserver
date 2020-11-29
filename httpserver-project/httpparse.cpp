@@ -216,14 +216,14 @@ int HTTPParse::SetupGetRequest() {
 	pthread_mutex_lock(mutx);	//critical region
 
 	int fileDescriptor[3];
-	int exists[3];
+	int errorCode[3];
 	bool fileComplete[3];
 	int bytesRead[3];
 	int n[3];
 
 	for (int i = 0; i < 3; i++) {
 		fileDescriptor[i] = -1;
-		exists[i] = -1;
+		errorCode[i] = -1;
 		fileComplete[i] = false;
 		bytesRead[i] = 0;
 		n[i] = 0;
@@ -242,6 +242,7 @@ int HTTPParse::SetupGetRequest() {
 	char buffer[3][SIZE + 1];
 
 	while (true) {
+		int errorCount = 0;
 		for (int i = 0; i < fileCount; i++) {
 			if (fileComplete[i] == false) {
 				if (fileDescriptor[i] < 0){
@@ -254,25 +255,46 @@ int HTTPParse::SetupGetRequest() {
 						filepath = filename;
 					}
 					fileDescriptor[i] = open(filepath, O_RDONLY);
-					
-					//exists[i] = access(filepath, F_OK);
 					if (fileDescriptor[i] < 0) {
 						if (errno == EACCES) {
 							warn("%s", filepath);
-							return 403;							
+							errorCode[i] = 403;
 						} else {
 							warn("%s", filepath);
-							return 404;
+							errorCode[i] = 404;
 						}
-						/*
-						if (exists < 0) {
-							warn("%s", filepath);
-							return 404;
+						errorCount++;
+						fileComplete[i] = true;
+
+						if (GlobalServerInfo::redundancy) {
+							if (errorCount > 1) {
+								int err1 = -1;
+								int err2 = -1;
+								for(int j = 0; j < fileCount; j++) {
+									if (errorCode[j] != -1) {
+										if (err1 != -1) {
+											err2 = errorCode[j];
+										} else {
+											err1 = errorCode[j];
+										}
+									}
+									if (err1 != -1 && err2 != -1) {
+										break;
+									}
+								}
+								if (err1 == err2) {
+									return err1;
+								} else {
+									return 500;
+								}
+							}
 						} else {
-							warn("%s", filepath);
-							return 403;
+							if (errorCount > 0) {
+								return errorCode[0];
+							}
 						}
-						*/
+
+						continue;
 					}
 				}
 				
@@ -290,8 +312,9 @@ int HTTPParse::SetupGetRequest() {
 				}
 			}
 		}
-		
+
 		if (GlobalServerInfo::redundancy) {
+
 			bool comp1and2;
 			if (!(badFile[0] || badFile[1])) {
 				comp1and2 = strcmp(buffer[0], buffer[1]) != 0;
@@ -427,249 +450,3 @@ bool HTTPParse::IsValidName(char* filename) {
     }
     return true;
 }
-
-/*
-int HTTPParse::ParseRequestBody(char* r) {
-	//std::cout << "inside parseReqBody" << pthread_self() << std::endl;
-	index = 0;
-	request = r;
-	requestLength = strlen(request);
-	std::cout << "[HTTPParse] request: " << request << '\n';
-	std::cout << "[HTTPParse] requestLength: " << requestLength << '\n';
-	
-	pthread_mutex_t* mutx;
-	//std::cout << GlobalServerInfo::MutexInfoExists(filename) << std::endl;
-	if (GlobalServerInfo::MutexInfoExists(filename)) {
-		mutx = GlobalServerInfo::GetFileMutex(filename);
-	} else {
-		//std::cout << "adding mutex - put" << std::endl;
-		GlobalServerInfo::AddMutexInfo(filename);
-		mutx = GlobalServerInfo::GetFileMutex(filename);
-		// return 500 if this is false?
-	}
-	//std::cout << "thread id: " << pthread_self() << std::endl;
-	//std::cout << "outside mutex lock - put" << filename << std::endl;
-	pthread_mutex_lock(mutx);
-	//std::cout << "inside mutex - put" << std::endl;
-	//std::cout << "thread id inside:" <<  pthread_self() << std::endl;	
-	if (contentLength > requestLength) {
-		//ERROR, content length is bigger than body, return error code
-		return 500;
-	}
-	
-	if (contentLength < requestLength) {
-		ServerTools::GetSubstringFront(body, request, contentLength);
-	} else {
-		body = request;
-	}
-
-	std::cout << "[HTTPParse] body: " << body << '\n';
-
-	int messageCode = 500;
-	if (GlobalServerInfo::redundancy) {
-    	messageCode = PutActionRedundancy();
-	} else {
-      	messageCode = PutAction();
-	}
-	
-	pthread_mutex_unlock(mutx);
-	return messageCode;
-}
-
-int HTTPParse::PutAction() {
-	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-	
-	if (fd < 0) {
-		warn("%s", filename);
-		return 403;
-	}
-	
-	for (int i = 0; i < strlen(body); i++) {
-		char buf[1];
-		buf[0] = body[i];
-		if (write(fd, buf, 1) < 1) {
-			warn("%s", filename);
-			return 500;
-		}
-	}
-	
-	if (close(fd) < 0) {
-		warn("%s", filename);
-		return 500;
-	}
-	
-	return 201;
-	
-}
-
-int HTTPParse::PutActionRedundancy() {
-	int fd;
-	
-	int hasError[3] = {0, 0, 0};
-	for (int i = 1; i < 4; i++) {
-		char filePath[16];
-		memset(filePath, 0, sizeof filePath);
-		std::string toNum = std::to_string(i);
-    	char const *folderNumber = toNum.c_str();
-		strncpy(filePath, "copy", 4);
-		strncat(filePath, folderNumber, strlen(folderNumber));
-		strncat(filePath, "/", 1);
-		strncat(filePath, filename, 10);
-
-		//"copy1/Small12345"
-		fd = open(filePath, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
-		if (fd < 0) {
-			warn("%s", filename);
-			hasError[i - 1] = 1;
-		}
-			
-		for (int i = 0; i < strlen(body); i++) {
-			char buf[1];
-			buf[0] = body[i];
-			if (write(fd, buf, 1) < 1) {
-				warn("%s", filename);
-				return 500;
-			}
-		}
-			
-		if (close(fd) < 0) {
-			warn("%s", filename);
-			hasError[i - 1] = 1;
-		}
-	}
-	// if they're all 0's send 201
-	int numBadFiles = 0;
-	for (int i = 0; i < 3; i++) {
-		if (hasError[i] == 1){
-			numBadFiles++;
-		}
-	}
-	if (numBadFiles == 1) {
-		return 500; // ask TA
-	}
-	return 201;
-}
-
-int HTTPParse::GetAction() {
-	int fd = open(filename, O_RDONLY);
-	
-	int exists = access(filename, F_OK);
-	
-	if (fd < 0) {
-		if (exists < 0) {
-			warn("%s", filename);
-			return 404;
-		} else {
-			warn("%s", filename);
-			return 403;
-		}
-
-	}
-	
-	char buffer[2];
-	while (read(fd, buffer, 1) > 0) {
-		ServerTools::AppendChar(body, buffer[0]);
-	} 
-	
-	contentLength = strlen(body);
-	
-	//printf("%s\n", body);
-	//printf("%lu\n", strlen(body));
-	//printf("%i\n", contentLength);
-	
-	if (close(fd) < 0) {
-		warn("%s", filename);
-		return 500;
-	}
-	
-	return 200;
-}
-
-int HTTPParse::GetActionRedundancy() {
-
-	bool foundFile, sameContent = true;
-	bool firstTwoAreSame, secondTwoAreSame, firstAndThirdAreSame = true;
-	struct fileData file1, file2, file3;
-	int fd;
-	
-	int toSend[3] = {0, 0, 0};
-	for (int i = 1; i < 4; i++) {
-		// set paths
-		char filePath[16];
-		memset(filePath, 0, sizeof filePath);
-		std::string toNum = std::to_string(i);
-    	char const *folderNumber = toNum.c_str();
-		strncpy(filePath, "copy", 4);
-		strncat(filePath, folderNumber, strlen(folderNumber));
-		strncat(filePath, "/", 1);
-		strncat(filePath, filename, 10);
-
-		// open and do stuff
-		fd = open(filePath, O_RDONLY);
-		int exists = access(filePath, F_OK);
-			
-		if (fd < 0) {
-			if (exists < 0) {
-				warn("%s", filename);
-				return 404;
-			} else {
-				warn("%s", filename);
-				return 403;
-			}
-		}
-			
-			char buffer[2];
-			while (read(fd, buffer, 1) > 0) {
-				ServerTools::AppendChar(body, buffer[0]);
-			} 
-			
-			contentLength = strlen(body);
-
-		if (i == 1) {
-			file1.fileSize = contentLength;
-			ServerTools::GetSubstringFront(file1.fileContents, body, strlen(body));
-		} else if (i == 2) {
-			file2.fileSize = contentLength;
-			ServerTools::GetSubstringFront(file2.fileContents, body, strlen(body));
-		} else {
-			file3.fileSize = contentLength;
-			ServerTools::GetSubstringFront(file3.fileContents, body, strlen(body));
-		}
-		
-		if (close(fd) < 0) {
-			warn("%s", filename);
-			return 500;
-		}
-	}
-
-	SetFileToSend(file1, file2, file3, toSend);
-	bool differentFiles = true;
-	// if toSend is all 0's then non of the files are the same
-	for (int i = 0; i < 3; i++) {
-		if (toSend[i] == 1) {
-			differentFiles = false;
-			if (i==0) {
-				contentLength = file1.fileSize;
-				// clear body probably
-				ServerTools::GetSubstringFront(body, file1.fileContents, strlen(file1.fileContents));
-				break;
-			} else if (i==1) {
-				contentLength = file2.fileSize;
-				// clear body probably
-				ServerTools::GetSubstringFront(body, file2.fileContents, strlen(file1.fileContents));
-				break;
-			} else {
-				contentLength = file3.fileSize;
-				// clear body probably
-				ServerTools::GetSubstringFront(body, file3.fileContents, strlen(file1.fileContents));
-				break;
-			}
-		}
-	}
-	if (differentFiles == false) {
-
-		return 200;
-	}
-	return 500;
-}
-*/

@@ -14,7 +14,7 @@
 
 #include "globalserverinfo.h"
 #include "servertools.h"
-#define SIZE 32768
+#define SIZE 16384
 
 class HTTPParse {
 private:

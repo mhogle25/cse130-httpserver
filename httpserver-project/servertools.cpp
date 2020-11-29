@@ -13,7 +13,7 @@ void ServerTools::AppendChar(char*& string, char character) {
 	string[strLength + 1] = '\0';
 }
 
-char* ServerTools::AppendString(char*& destination, char* suffix, int count) {
+/*char* ServerTools::AppendString(char*& destination, char* suffix, int count) {
 	char* toReturn = new char[count];
 	strncpy(toReturn, destination, strlen(destination));
 	strncat(toReturn, suffix, strlen(suffix));
@@ -37,5 +37,5 @@ void ServerTools::GetSubstringFront(char*& destination, char* source, int bytes)
 	}
 
 	destination[bytes] = '\0';
-}
+}*/
 

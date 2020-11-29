@@ -35,6 +35,7 @@ unsigned long ServerManager::GetAddress(char *name) {
 	}
 	res = ((struct sockaddr_in*) info->ai_addr)->sin_addr.s_addr;
 	freeaddrinfo(info);
+	std::cout << "res: " << res << '\n';
 	return res;
 }
 

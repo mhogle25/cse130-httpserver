@@ -254,9 +254,17 @@ int HTTPParse::SetupGetRequest() {
 						filepath = filename;
 					}
 					fileDescriptor[i] = open(filepath, O_RDONLY);
-
-					exists[i] = access(filepath, F_OK);
+					
+					//exists[i] = access(filepath, F_OK);
 					if (fileDescriptor[i] < 0) {
+						if (errno == EACCES) {
+							warn("%s", filepath);
+							return 403;							
+						} else {
+							warn("%s", filepath);
+							return 404;
+						}
+						/*
 						if (exists < 0) {
 							warn("%s", filepath);
 							return 404;
@@ -264,7 +272,7 @@ int HTTPParse::SetupGetRequest() {
 							warn("%s", filepath);
 							return 403;
 						}
-
+						*/
 					}
 				}
 				

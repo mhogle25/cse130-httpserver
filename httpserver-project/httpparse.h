@@ -10,6 +10,7 @@
 #include <err.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "globalserverinfo.h"
 #include "servertools.h"

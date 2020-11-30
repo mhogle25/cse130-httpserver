@@ -134,6 +134,8 @@ void ServerConnection::BeginRecv() {
 						if (bytesRead >= cl) {
 							break;
 						}
+					} else {
+						break;
 					}
 				}
 

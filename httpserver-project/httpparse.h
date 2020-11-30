@@ -34,12 +34,6 @@ private:
 	bool IsValidName(char*);
 	int SetupGetRequest();
 public:	
-
-	struct fileData {
-		int fileSize;
-		char* fileContents;
-	};
-
 	char body[SIZE + 1];
 		
 	HTTPParse();

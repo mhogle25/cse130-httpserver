@@ -25,6 +25,7 @@ HTTPParse::~HTTPParse() {
 }
 
 int HTTPParse::ParseRequestHeader(char* r) {
+	std::cout << "[HTTPParse] header: " << r << '\n';
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
@@ -41,7 +42,9 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		return 400;
 	}
 	
-	if (strlen(filename) != 10) {
+	bool isValidFunctionality = strlen(filename) == 1 && (strcmp(filename, "r") == 0 || strcmp(filename, "b") == 0 || strcmp(filename, "l") == 0);
+
+	if (strlen(filename) != 10 || !isValidFunctionality) {
 		return 400;
 	}
 

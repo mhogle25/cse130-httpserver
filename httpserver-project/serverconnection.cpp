@@ -94,13 +94,23 @@ void ServerConnection::BeginRecv() {
 					}
 					pthread_mutex_lock(mutx);	//Begin Critical Region
 
-					int bytesRead = 0;
-					while(1) {
-						int n = parser->GetAction();
-						send(serverConnectionData->comm_fd, parser->body, n, 0);
-						bytesRead += n;
-						if (bytesRead >= contentLength) {
-							break;
+
+					// to do: array w our program files 
+					if (strcmp(parser->GetFilename(), "r")) {
+						// call recovery function
+					} else if (strcmp(parser->GetFilename(), "b")) {
+						// call backup function
+					} else if (strcmp(parser->GetFilename(), "l")) {
+						// call list function
+					} else {
+						int bytesRead = 0;
+						while(1) {
+							int n = parser->GetAction();
+							send(serverConnectionData->comm_fd, parser->body, n, 0);
+							bytesRead += n;
+							if (bytesRead >= contentLength) {
+								break;
+							}
 						}
 					}
 

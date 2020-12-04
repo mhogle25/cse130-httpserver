@@ -29,6 +29,8 @@ private:
 	int fd[3];
 	int bytesUsed[3];
 	int correctFileIndex;
+
+	const char* ignore[20];
 	
 	char* GetWord();
 	bool IsValidName(char*);

@@ -17,6 +17,28 @@ HTTPParse::HTTPParse() {
 		bytesUsed[i] = 0;
 	}
 	correctFileIndex = 0;
+
+	ignore[0] = "DESIGN.pdf";
+	ignore[1] = "globalserverinfo.cpp";
+	ignore[2] = "globalserverinfo.h";
+	ignore[3] = "globalserverinfo.o";
+	ignore[4] = "httpparse.cpp";
+	ignore[5] = "httpparse.h";
+	ignore[6] = "httpparse.o";
+	ignore[7] = "httpserver";
+	ignore[8] = "main.cpp";
+	ignore[9] = "main.o";
+	ignore[10] = "Makefile";
+	ignore[11] = "README.md";
+	ignore[12] = "serverconnection.cpp";
+	ignore[13] = "serverconnection.h";
+	ignore[14] = "serverconnection.o";
+	ignore[15] = "servermanager.cpp";
+	ignore[16] = "servermanager.h";
+	ignore[17] = "servermanager.o";
+	ignore[18] = "servertools.cpp";
+	ignore[19] = "servertools.h";
+	ignore[20] = "servertools.o";
 }
 
 HTTPParse::~HTTPParse() {
@@ -68,8 +90,17 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	}
 	
 	if (GetRequestType() == 0) {	//GET
-		
-		int messageCode = SetupGetRequest();
+
+		int messageCode;
+		if (strcmp(filename, "r")) {
+			// call recovery function
+		} else if (strcmp(filename, "b")) {
+			// call backup function
+		} else if (strcmp(filename, "l")) {
+			// call list function
+		} else {
+ 			messageCode = SetupGetRequest();
+		}
 
 		return messageCode;
 	}

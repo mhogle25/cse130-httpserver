@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <time.h>
+#include <sys/stat.h>
 
 #include "globalserverinfo.h"
 #include "servertools.h"
@@ -46,6 +48,8 @@ public:
 	int GetRequestType();
 	int GetContentLength();
 	char* GetFilename();
+	int HandleBackups(char*);
+	bool IsProgramFile(char*);
 };
 
 #endif

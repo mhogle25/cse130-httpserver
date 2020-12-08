@@ -94,8 +94,10 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		int messageCode;
 		if (strcmp(filename, "r")) {
 			// call recovery function
+			std::cout << "[HTTPParse] inside r if statement " << r << '\n';
 		} else if (strcmp(filename, "b")) {
-			// call backup function
+			std::cout << "[HTTPParse] inside b if statement " << r << '\n';
+			messageCode = HandleBackups(filename);
 		} else if (strcmp(filename, "l")) {
 			// call list function
 		} else {
@@ -483,4 +485,79 @@ bool HTTPParse::IsValidName(char* filename) {
         }
     }
     return true;
+}
+
+int HTTPParse::HandleBackups(char* filename) {
+	contentLength = 0;
+	time_t seconds;
+	seconds = time(NULL);
+	// set folder name
+	std::string folderName = "backup-" + std::to_string(seconds);
+	std::cout << "[HTTPParse] folderName: " << folderName << '\n';
+	// create directory
+	const char * directory = folderName.c_str();
+	int checkCreatedDirectory = mkdir(directory,0777); 
+	std::cout << "[HTTPParse] created directory " << directory << '\n';
+	// for each file in the current directory
+		// set path name
+		// read and write to path name
+
+	struct dirent *directoryPointer;  // Pointer for directory entry 
+  
+	// opendir() returns a pointer of DIR type.  
+    DIR *openedSuccessfully = opendir("."); 
+  
+    if (openedSuccessfully == NULL) { 
+		std::cout << "[HTTPParse] couldn't open directory\n";
+        return 500; 
+	} 
+
+    while ((directoryPointer = readdir(openedSuccessfully)) != NULL) {
+		std::string file = directoryPointer->d_name;
+		const char * fileNameStr = file.c_str();
+		if (!IsProgramFile(filename)) {
+			std::string file = directoryPointer->d_name;
+			std::cout << "[HTTPParse] file: " << file << '\n';
+			std::string pathnamestr = folderName + "/" + file;
+			std::cout << "[HTTPParse] pathName: " << file << '\n';
+			const char * pathName = pathnamestr.c_str();
+
+			char buffer[15872];
+            memset(buffer, 0, sizeof buffer);
+			// read from file 
+			int fileBytesRead = 1;
+			while (fileBytesRead != 0) {
+				// open the file
+				int fd = open(fileNameStr, O_RDONLY);
+				// check if 403 and if its not then continue w this stuff
+				fileBytesRead = read(fd, buffer, 15872);
+				if (fileBytesRead < 0){
+					warn("%s", filename);
+					close(fd);
+				}
+				close(fd);
+				// write to pathname
+				int backupFd = open(pathName, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
+				int writtenSuccessfully = write(backupFd, buffer, fileBytesRead);
+				if (writtenSuccessfully < 0) {
+					warn("%s", "write()");
+				}
+				
+
+			}
+		}
+	}
+    closedir(openedSuccessfully);     
+    return 0; 
+
+	return 200;
+}
+
+bool HTTPParse::IsProgramFile(char * f) {
+	for (int i = 0; i < 20; i++) {
+		if (strcmp(ignore[i], f) == 0) {
+			return true;
+		}
+	}
+	return false;
 }

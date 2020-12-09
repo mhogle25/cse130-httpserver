@@ -39,6 +39,8 @@ HTTPParse::HTTPParse() {
 	ignore[18] = "servertools.cpp";
 	ignore[19] = "servertools.h";
 	ignore[20] = "servertools.o";
+	ignore[21] = ".";
+	ignore[22] = "..";
 }
 
 HTTPParse::~HTTPParse() {
@@ -63,13 +65,17 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		//ERROR, not an HTTP request, return error code
 		return 400;
 	}
-	
-	bool isValidFunctionality = strlen(filename) == 1 && (strcmp(filename, "r") == 0 || strcmp(filename, "b") == 0 || strcmp(filename, "l") == 0);
-
-	if (strlen(filename) != 10 || !isValidFunctionality) {
+	std::cout << "[HTTPParse] without slash: " << filename << '\n';	
+	bool isValidFunctionality = (strcmp(filename, "r") == 0 || strcmp(filename, "b") == 0 || strcmp(filename, "l") == 0);
+	std::cout << "[HTTPParse] isValidFunctionality " << isValidFunctionality<< '\n';
+	if (strlen(filename) != 10 &&  strlen(filename) != 1) {
+		std::cout << "size of filename" << strlen(filename) << '\n';
 		return 400;
 	}
-
+	
+	if (!isValidFunctionality) {
+		return 400;
+	}
 	if (!IsValidName(filename)) {
 		return 400;
 	}
@@ -92,13 +98,13 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	if (GetRequestType() == 0) {	//GET
 
 		int messageCode;
-		if (strcmp(filename, "r")) {
+		if (strcmp(filename, "r") == 0) {
 			// call recovery function
 			std::cout << "[HTTPParse] inside r if statement " << r << '\n';
-		} else if (strcmp(filename, "b")) {
+		} else if (strcmp(filename, "b") == 0) {
 			std::cout << "[HTTPParse] inside b if statement " << r << '\n';
 			messageCode = HandleBackups(filename);
-		} else if (strcmp(filename, "l")) {
+		} else if (strcmp(filename, "l") == 0) {
 			// call list function
 		} else {
  			messageCode = SetupGetRequest();
@@ -515,45 +521,58 @@ int HTTPParse::HandleBackups(char* filename) {
     while ((directoryPointer = readdir(openedSuccessfully)) != NULL) {
 		std::string file = directoryPointer->d_name;
 		const char * fileNameStr = file.c_str();
-		if (!IsProgramFile(filename)) {
+		std::cout << "IsProgramFile" << fileNameStr << IsProgramFile(fileNameStr) << '\n';
+		if (!IsProgramFile(fileNameStr)) {
 			std::string file = directoryPointer->d_name;
 			std::cout << "[HTTPParse] file: " << file << '\n';
 			std::string pathnamestr = folderName + "/" + file;
-			std::cout << "[HTTPParse] pathName: " << file << '\n';
+			std::cout << "[HTTPParse] pathName: " << pathnamestr << '\n';
 			const char * pathName = pathnamestr.c_str();
 
-			char buffer[15872];
-            memset(buffer, 0, sizeof buffer);
+			char b[15872];
+            		memset(b, 0, sizeof b);
 			// read from file 
 			int fileBytesRead = 1;
 			while (fileBytesRead != 0) {
 				// open the file
 				int fd = open(fileNameStr, O_RDONLY);
+				if (fd < 0) {
+					if (errno == EACCES) {
+						warn("403 %s", fileNameStr);
+						break;
+					} else {
+						warn("404 %s", fileNameStr);
+						break;
+					}
+				}
 				// check if 403 and if its not then continue w this stuff
-				fileBytesRead = read(fd, buffer, 15872);
+				fileBytesRead = read(fd, b, sizeof b);
 				if (fileBytesRead < 0){
 					warn("%s", filename);
 					close(fd);
+					break;
 				}
 				close(fd);
+				std::cout << "fileBytesRead" << fileBytesRead << '\n';
+				std::cout << "buffer" << b << '\n';
 				// write to pathname
 				int backupFd = open(pathName, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
-				int writtenSuccessfully = write(backupFd, buffer, fileBytesRead);
+				int writtenSuccessfully = write(backupFd, b, fileBytesRead);
+				close(backupFd);
 				if (writtenSuccessfully < 0) {
 					warn("%s", "write()");
+					break;
 				}
-				
+
 
 			}
 		}
 	}
-    closedir(openedSuccessfully);     
-    return 0; 
-
+    closedir(openedSuccessfully);
 	return 200;
 }
 
-bool HTTPParse::IsProgramFile(char * f) {
+bool HTTPParse::IsProgramFile(const char * f) {
 	for (int i = 0; i < 20; i++) {
 		if (strcmp(ignore[i], f) == 0) {
 			return true;

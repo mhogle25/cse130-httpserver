@@ -32,7 +32,7 @@ private:
 	int bytesUsed[3];
 	int correctFileIndex;
 
-	const char* ignore[20];
+	const char* ignore[21];
 	
 	char* GetWord();
 	bool IsValidName(char*);
@@ -49,7 +49,7 @@ public:
 	int GetContentLength();
 	char* GetFilename();
 	int HandleBackups(char*);
-	bool IsProgramFile(char*);
+	bool IsProgramFile(const char*);
 };
 
 #endif

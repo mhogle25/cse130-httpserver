@@ -561,8 +561,8 @@ int HTTPParse::HandleBackups(char* filename) {
 							break;
 						}
 						// close(fd);
-						std::cout << "fileBytesRead" << fileBytesRead << '\n';
-						std::cout << "buffer" << b << '\n';
+						// std::cout << "fileBytesRead" << fileBytesRead << '\n';
+						// std::cout << "buffer" << b << '\n';
 						// write to pathname
 						int writtenSuccessfully = write(backupFd, b, fileBytesRead);
 						if (writtenSuccessfully < 0) {
@@ -583,15 +583,18 @@ int HTTPParse::HandleBackups(char* filename) {
 }
 
 bool HTTPParse::IsProgramFile(const char * f) {
+	std::cout << "[HTPParse IsProgramFile] files" << f << '\n';
 	for (int i = 0; i < 27; i++) {
 		if (strcmp(ignore[i], f) == 0) {
 			return true;
 		}
-		const char * isBackupFolder;
-		isBackupFolder = strstr (ignore[i],"backup-");
-		if (isBackupFolder == NULL) {
-			return true;
-		}
 	}
+	const char * isBackupFolder;
+        isBackupFolder = strstr (f,"backup-");
+        if (isBackupFolder != NULL) {
+        	std::cout << "is backup folder\n";
+                return true;
+        }
+
 	return false;
 }

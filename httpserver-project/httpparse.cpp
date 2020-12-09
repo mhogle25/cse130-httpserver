@@ -587,6 +587,11 @@ bool HTTPParse::IsProgramFile(const char * f) {
 		if (strcmp(ignore[i], f) == 0) {
 			return true;
 		}
+		const char * isBackupFolder;
+		isBackupFolder = strstr (ignore[i],"backup-");
+		if (isBackupFolder == NULL) {
+			return true;
+		}
 	}
 	return false;
 }

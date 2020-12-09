@@ -530,42 +530,48 @@ int HTTPParse::HandleBackups(char* filename) {
 			const char * pathName = pathnamestr.c_str();
 
 			char b[15872];
-            		memset(b, 0, sizeof b);
+            memset(b, 0, sizeof b);
 			// read from file 
-			int fileBytesRead = 1;
-			while (fileBytesRead != 0) {
-				// open the file
-				int fd = open(fileNameStr, O_RDONLY);
-				if (fd < 0) {
-					if (errno == EACCES) {
-						warn("403 %s", fileNameStr);
-						break;
-					} else {
-						warn("404 %s", fileNameStr);
-						break;
+			// open the file
+			int fd = open(fileNameStr, O_RDONLY);
+			if (fd < 0) {
+				if (errno == EACCES) {
+					warn("403 %s", fileNameStr);
+					// break;
+				} else {
+					warn("404 %s", fileNameStr);
+					// break;
+				}
+			} else {
+				int backupFd = open(pathName, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
+				if (backupFd < 0) {
+					warn("error opening backup file %s", pathName);
+				} else {
+					int fileBytesRead = 1;
+					while (fileBytesRead != 0) {
+						// check if 403 and if its not then continue w this stuff
+						fileBytesRead = read(fd, b, sizeof b);
+						if (fileBytesRead < 0){
+							warn("%s", filename);
+							close(fd);
+							break;
+						}
+						// close(fd);
+						std::cout << "fileBytesRead" << fileBytesRead << '\n';
+						std::cout << "buffer" << b << '\n';
+						// write to pathname
+						int writtenSuccessfully = write(backupFd, b, fileBytesRead);
+						if (writtenSuccessfully < 0) {
+							warn("%s", "write()");
+							break;
+						}
 					}
 				}
-				// check if 403 and if its not then continue w this stuff
-				fileBytesRead = read(fd, b, sizeof b);
-				if (fileBytesRead < 0){
-					warn("%s", filename);
-					close(fd);
-					break;
-				}
 				close(fd);
-				std::cout << "fileBytesRead" << fileBytesRead << '\n';
-				std::cout << "buffer" << b << '\n';
-				// write to pathname
-				int backupFd = open(pathName, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
-				int writtenSuccessfully = write(backupFd, b, fileBytesRead);
 				close(backupFd);
-				if (writtenSuccessfully < 0) {
-					warn("%s", "write()");
-					break;
-				}
-
 
 			}
+
 		}
 	}
     closedir(openedSuccessfully);

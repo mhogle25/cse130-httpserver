@@ -41,6 +41,10 @@ HTTPParse::HTTPParse() {
 	ignore[20] = "servertools.o";
 	ignore[21] = ".";
 	ignore[22] = "..";
+	ignore[23] = "client";
+	ignore[24] = "copy1";
+	ignore[25] = "copy2";
+	ignore[26] = "copy3";
 }
 
 HTTPParse::~HTTPParse() {
@@ -579,7 +583,7 @@ int HTTPParse::HandleBackups(char* filename) {
 }
 
 bool HTTPParse::IsProgramFile(const char * f) {
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < 27; i++) {
 		if (strcmp(ignore[i], f) == 0) {
 			return true;
 		}

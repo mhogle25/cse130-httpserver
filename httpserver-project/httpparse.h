@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <time.h>
+#include <sys/stat.h>
 
 #include "globalserverinfo.h"
 #include "servertools.h"
@@ -30,7 +32,7 @@ private:
 	int bytesUsed[3];
 	int correctFileIndex;
 
-	const char* ignore[20];
+	const char* ignore[27];
 	
 	char* GetWord();
 	bool IsValidName(char*);
@@ -46,6 +48,12 @@ public:
 	int GetRequestType();
 	int GetContentLength();
 	char* GetFilename();
+	int HandleBackups(char*);
+	int HandleFolderRecovery(char*);
+	bool IsProgramFile(const char*);
+	long GetNewestBackup();
+	bool InBackupDirectory(const char*, const char*);
+
 };
 
 #endif

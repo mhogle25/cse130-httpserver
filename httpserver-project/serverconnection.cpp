@@ -98,10 +98,13 @@ void ServerConnection::BeginRecv() {
 					// to do: array w our program files 
 					if (strcmp(parser->GetFilename(), "r")) {
 						// call recovery function
+						std::cout << "[Server Connection] inside r if statement" << '\n';
 					} else if (strcmp(parser->GetFilename(), "b")) {
 						// call backup function
+						std::cout << "[Server Connection] inside b if statement" << '\n';
 					} else if (strcmp(parser->GetFilename(), "l")) {
 						// call list function
+						std::cout << "[Server Connection] inside l if statement" << '\n';
 					} else {
 						int bytesRead = 0;
 						while(1) {

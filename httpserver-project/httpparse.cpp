@@ -112,14 +112,17 @@ int HTTPParse::ParseRequestHeader(char* r) {
 			messageCode = SetupGetListRequest();
 		} else {
  			if (filename[0] == 'r' && filename[1] == '/') {
-				char newFilename[SIZE];
-				strcpy(newFilename, filename);
-				memmove(newFilename, newFilename+2, strlen(newFilename));
-				long temp = atol(newFilename);
-				messageCode = HandleFolderRecovery(temp);
-			} else {
- 				messageCode = SetupGetRequest();
-			}
+                char newFilename[SIZE];
+                strcpy(newFilename, filename);
+                memmove(newFilename, newFilename+2, strlen(newFilename));
+                if (strlen(newFilename) < 1) {
+                    return 400;
+                }
+                long temp = atol(newFilename);
+                messageCode = HandleFolderRecovery(temp);
+            } else {
+                 messageCode = SetupGetRequest();
+            }
 		}
 
 		return messageCode;
@@ -604,7 +607,11 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 	// set the backup folder name
 	std::string backupFolderNameStr = "backup-" + std::to_string(newestBackupTime);
 	const char * backupFolderName = backupFolderNameStr.c_str();
-	// open backup folder
+	
+	if (!FolderHasPermissions(backupFolderName)) {
+		return 403;
+	}
+	
 	struct dirent *directoryPointer;
     DIR *openedSuccessfully = opendir("."); 
     if (openedSuccessfully == NULL) { 
@@ -620,6 +627,7 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 		std::cout << "[HTTPParse] pathName: " << pathnamestr << '\n';
 		const char * pathName = pathnamestr.c_str();
 		std::cout << "[HTTPParse] val of InBackupDirectory: " << InBackupDirectory(file, backupFolderName) << '\n';
+
 		if (!IsProgramFile(file) && InBackupDirectory(file, backupFolderName)) { // if is not program file and is in backup directory
 
 			char b[15872];
@@ -670,6 +678,15 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 	}
     closedir(openedSuccessfully);
 	return 200;
+}
+
+bool HTTPParse::FolderHasPermissions(const char * backup) {
+	DIR *openedSuccessfully = opendir(backup); 
+    if (openedSuccessfully == NULL) { 
+		std::cout << "[HTTPParse] couldn't open directory\n";
+        return false; 
+	}
+	return true;
 }
 
 bool HTTPParse::IsProgramFile(const char * f) {

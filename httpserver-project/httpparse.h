@@ -61,6 +61,7 @@ public:
 	bool IsProgramFile(const char*);
 	long GetNewestBackup();
 	bool InBackupDirectory(const char*, const char*);
+	bool FolderHasPermissions(const char *);
 
 };
 

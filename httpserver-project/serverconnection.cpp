@@ -94,18 +94,19 @@ void ServerConnection::BeginRecv() {
 					}
 					pthread_mutex_lock(mutx);	//Begin Critical Region
 
-
-					// to do: array w our program files 
-					if (strcmp(parser->GetFilename(), "r")) {
-						// call recovery function
-						std::cout << "[Server Connection] inside r if statement" << '\n';
-					} else if (strcmp(parser->GetFilename(), "b")) {
-						// call backup function
-						std::cout << "[Server Connection] inside b if statement" << '\n';
-					} else if (strcmp(parser->GetFilename(), "l")) {
-						// call list function
-						std::cout << "[Server Connection] inside l if statement" << '\n';
-					} else {
+					if (strcmp(parser->GetFilename(), "l") == 0) {
+						int bytesRead = 0;
+						while(1) {
+							int n = parser->GetListAction();
+							if (n > 0) {
+								send(serverConnectionData->comm_fd, parser->body, n, 0);
+							}
+							bytesRead += n;
+							if (bytesRead >= contentLength) {
+								break;
+							}
+						}
+					} else if (strcmp(parser->GetFilename(), "r") != 0 && strcmp(parser->GetFilename(), "b") != 0 && !(parser->GetFilename()[0] == 'r' && parser->GetFilename()[1] == '/')) { 
 						int bytesRead = 0;
 						while(1) {
 							int n = parser->GetAction();

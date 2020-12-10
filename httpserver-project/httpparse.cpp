@@ -1,9 +1,4 @@
 #include "httpparse.h"
-#include <sys/types.h>
-#include <dirent.h>
-#include <libgen.h>
-#include <string>
-#include <iostream>
 
 HTTPParse::HTTPParse() {
 	index = 0;
@@ -69,23 +64,23 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		//ERROR, not an HTTP request, return error code
 		return 400;
 	}
-	std::cout << "[HTTPParse] without slash: " << filename << '\n';	
-	bool isValidFunctionality = (strcmp(filename, "r") == 0 || strcmp(filename, "b") == 0 || strcmp(filename, "l") == 0);
-	std::cout << "[HTTPParse] isValidFunctionality " << isValidFunctionality<< '\n';
+
+	if (GetRequestType() == 0) {
+		bool isValidFunctionality = strlen(filename) == 1 && (strcmp(filename, "r") == 0 || strcmp(filename, "b") == 0 || strcmp(filename, "l") == 0);
 	
-	if ((strlen(filename) != 10 &&  strlen(filename) != 1) && !isValidFunctionality) {
-                std::cout << "size of filename" << strlen(filename) << '\n';
-                return 400;
-        }
+		if (strlen(filename) > 1) {
+			isValidFunctionality = isValidFunctionality || (filename[0] == 'r' && filename[1] == '/');
+		}
 
-        /*if (!isValidFunctionality) {
-                return 400;
-        }*/
+		if (!IsValidName(filename) && !isValidFunctionality) {
+			return 400;
+		}
+	}
 
-
-	
-	if (!IsValidName(filename)) {
-		return 400;
+	if (GetRequestType() == 1) {
+		if (!IsValidName(filename)) {
+			return 400;
+		}
 	}
 	
 	char* httpTitle = GetWord();
@@ -109,14 +104,22 @@ int HTTPParse::ParseRequestHeader(char* r) {
 		if (strcmp(filename, "r") == 0) {
 			// call recovery function
 			std::cout << "[HTTPParse] inside r if statement " << r << '\n';
-			messageCode = HandleFolderRecovery(filename);
+			messageCode = HandleFolderRecoveryNewest();
 		} else if (strcmp(filename, "b") == 0) {
 			std::cout << "[HTTPParse] inside b if statement " << r << '\n';
 			messageCode = HandleBackups(filename);
 		} else if (strcmp(filename, "l") == 0) {
-			// call list function
+			messageCode = SetupGetListRequest();
 		} else {
- 			messageCode = SetupGetRequest();
+ 			if (filename[0] == 'r' && filename[1] == '/') {
+				char newFilename[SIZE];
+				strcpy(newFilename, filename);
+				memmove(newFilename, newFilename+2, strlen(newFilename));
+				long temp = atol(newFilename);
+				messageCode = HandleFolderRecovery(temp);
+			} else {
+ 				messageCode = SetupGetRequest();
+			}
 		}
 
 		return messageCode;
@@ -587,9 +590,12 @@ int HTTPParse::HandleBackups(char* filename) {
 	return 200;
 }
 
-int HTTPParse::HandleFolderRecovery(char* filename) {
+int HTTPParse::HandleFolderRecoveryNewest() {
+	return HandleFolderRecovery(GetNewestBackup());
+}
+
+int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 	contentLength = 0;
-	long newestBackupTime = GetNewestBackup();
 	// check if backup number returned is 0 then there is no backup folder
 	if (newestBackupTime == 0) {
 		warn("%s", "there is not backup folder found in the current directory");
@@ -737,4 +743,71 @@ long HTTPParse::GetNewestBackup() {
 		}
 	}
 	return newestBackup;
+}
+
+int HTTPParse::SetupGetListRequest() {
+	struct dirent *de;  // Pointer for directory entry 
+  
+    // opendir() returns a pointer of DIR type.  
+    DIR *dir = opendir("."); 
+  
+    if (dir == NULL)
+    { 
+        warn("opendir()");
+        return 500; 
+    } 
+
+	int accumulator = 0;
+	char buffer[SIZE];
+    while ((de = readdir(dir)) != NULL) {
+    	strncpy(buffer, de->d_name, 7);
+		buffer[9] = '\0';
+		std::cout << "[SetupGetListRequest]: " << de->d_name << "\n";
+		if (strcmp(buffer, "backup-") == 0) {
+			memset(buffer, 0, sizeof buffer);
+			strcpy(buffer, de->d_name + 7);
+			int nameLength = strlen(buffer);
+			accumulator += nameLength + 1;
+		}
+	}
+  
+    closedir(dir);
+
+	contentLength = accumulator;
+
+    return 200; 
+}
+
+int HTTPParse::GetListAction() {
+	struct dirent *de;  // Pointer for directory entry 
+	if (dr == NULL) {
+		// opendir() returns a pointer of DIR type.  
+		dr = opendir("."); 
+	
+		if (dr == NULL)
+		{ 
+			warn("opendir()");
+			return -1; 
+		} 
+	}
+
+	int nameLength = 0;
+	memset(body, 0, sizeof body);
+    de = readdir(dr);
+	char buffer[SIZE];
+	memset(body, 0, sizeof body);
+	if (de != NULL) {
+		strncpy(buffer, de->d_name, 7);
+		buffer[9] = '\0';
+		if (strcmp(buffer, "backup-") == 0) {
+			strcpy(body, de->d_name + 7);
+			strcat(body, "\n");
+			nameLength = strlen(body);
+		}
+	} else {
+		closedir(dr); 
+		return 0;
+	}
+    
+    return nameLength; 
 }

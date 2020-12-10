@@ -686,6 +686,7 @@ bool HTTPParse::FolderHasPermissions(const char * backup) {
 		std::cout << "[HTTPParse] couldn't open directory\n";
         return false; 
 	}
+    closedir(openedSuccessfully);
 	return true;
 }
 

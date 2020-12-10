@@ -49,7 +49,9 @@ public:
 	int GetContentLength();
 	char* GetFilename();
 	int HandleBackups(char*);
+	int HandleFolderRecovery(char*);
 	bool IsProgramFile(const char*);
+	long GetNewestBackup();
 };
 
 #endif

@@ -96,12 +96,22 @@ void ServerConnection::BeginRecv() {
 
 
 					// to do: array w our program files 
-					if (strcmp(parser->GetFilename(), "r")) {
+					if (strcmp(parser->GetFilename(), "r") == 0) {
 						// call recovery function
-					} else if (strcmp(parser->GetFilename(), "b")) {
+					} else if (strcmp(parser->GetFilename(), "b") == 0) {
 						// call backup function
-					} else if (strcmp(parser->GetFilename(), "l")) {
-						// call list function
+					} else if (strcmp(parser->GetFilename(), "l") == 0) {
+						int bytesRead = 0;
+						while(1) {
+							int n = parser->GetListAction();
+							if (n > 0) {
+								send(serverConnectionData->comm_fd, parser->body, n, 0);
+							}
+							bytesRead += n;
+							if (bytesRead >= contentLength) {
+								break;
+							}
+						}
 					} else {
 						int bytesRead = 0;
 						while(1) {

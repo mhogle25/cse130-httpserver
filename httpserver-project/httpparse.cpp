@@ -56,22 +56,30 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	std::cout << "[HTTPParse] request type: " << requestType << '\n';
 
 	filename = GetWord();
-	std::cout << "[HTTPParse] filename: " << filename << '\n';
 	if (filename[0] == '/') {
 		memmove(filename, filename+1, strlen(filename));
 	} else {
 		//ERROR, not an HTTP request, return error code
 		return 400;
 	}
-	
-	bool isValidFunctionality = strlen(filename) == 1 && (strcmp(filename, "r") == 0 || strcmp(filename, "b") == 0 || strcmp(filename, "l") == 0);
+	std::cout << "[HTTPParse] filename: " << filename << '\n';
 
-	if (strlen(filename) != 10 || !isValidFunctionality) {
-		return 400;
+	if (GetRequestType() == 0) {
+		bool isValidFunctionality = strlen(filename) == 1 && (strcmp(filename, "r") == 0 || strcmp(filename, "b") == 0 || strcmp(filename, "l") == 0);
+	
+		if (strlen(filename) > 1) {
+			isValidFunctionality = isValidFunctionality || (filename[0] == 'r' && filename[1] == '/');
+		}
+
+		if (!IsValidName(filename) && !isValidFunctionality) {
+			return 400;
+		}
 	}
 
-	if (!IsValidName(filename)) {
-		return 400;
+	if (GetRequestType() == 1) {
+		if (!IsValidName(filename)) {
+			return 400;
+		}
 	}
 	
 	char* httpTitle = GetWord();
@@ -90,16 +98,19 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	}
 	
 	if (GetRequestType() == 0) {	//GET
-
 		int messageCode;
-		if (strcmp(filename, "r")) {
+		if (strcmp(filename, "r") == 0) {
 			// call recovery function
-		} else if (strcmp(filename, "b")) {
+		} else if (strcmp(filename, "b") == 0) {
 			// call backup function
-		} else if (strcmp(filename, "l")) {
-			// call list function
+		} else if (strcmp(filename, "l") == 0) {
+			messageCode = SetupGetListRequest();
 		} else {
- 			messageCode = SetupGetRequest();
+			if (filename[0] == 'r' && filename[1] == '/') {
+				messageCode = GetRecoveryActionTimestamp();
+			} else {
+ 				messageCode = SetupGetRequest();
+			}
 		}
 
 		return messageCode;
@@ -483,4 +494,123 @@ bool HTTPParse::IsValidName(char* filename) {
         }
     }
     return true;
+}
+
+int HTTPParse::SetupGetListRequest() {
+	struct dirent *de;  // Pointer for directory entry 
+  
+    // opendir() returns a pointer of DIR type.  
+    DIR *dir = opendir("."); 
+  
+    if (dir == NULL)
+    { 
+        warn("opendir()");
+        return 500; 
+    } 
+
+	int accumulator = 0;
+	char buffer[SIZE];
+    while ((de = readdir(dir)) != NULL) {
+    	strncpy(buffer, de->d_name, 7);
+		buffer[9] = '\0';
+		std::cout << "[SetupGetListRequest]: " << de->d_name << "\n";
+		if (strcmp(buffer, "backup-") == 0) {
+			memset(buffer, 0, sizeof buffer);
+			strcpy(buffer, de->d_name + 7);
+			int nameLength = strlen(buffer);
+			accumulator += nameLength + 1;
+		}
+	}
+  
+    closedir(dir);
+
+	contentLength = accumulator;
+
+    return 200; 
+}
+
+int HTTPParse::GetListAction() {
+	struct dirent *de;  // Pointer for directory entry 
+	if (dr == NULL) {
+		// opendir() returns a pointer of DIR type.  
+		dr = opendir("."); 
+	
+		if (dr == NULL)
+		{ 
+			warn("opendir()");
+			return -1; 
+		} 
+	}
+
+	int nameLength = 0;
+	memset(body, 0, sizeof body);
+    de = readdir(dr);
+	char buffer[SIZE];
+	memset(body, 0, sizeof body);
+	if (de != NULL) {
+		strncpy(buffer, de->d_name, 7);
+		buffer[9] = '\0';
+		if (strcmp(buffer, "backup-") == 0) {
+			strcpy(body, de->d_name + 7);
+			strcat(body, "\n");
+			nameLength = strlen(body);
+		}
+	} else {
+		closedir(dr); 
+		return 0;
+	}
+    
+    return nameLength; 
+}
+
+int HTTPParse::GetRecoveryActionTimestamp() {
+	memmove(filename, filename+2, strlen(filename));
+	char buffer[SIZE];
+	strcpy(buffer, "backup-");
+	strcat(buffer, filename);
+
+	dr = opendir(".");
+	if (dr == NULL) {
+		return 500;
+	}
+
+	struct dirent* de;
+	while(1) {
+		de = readdir(dr);
+		if (de == NULL) {
+			break;
+		}
+		remove(de->d_name);
+	}
+
+	closedir(dr);
+
+	dr = opendir(buffer);
+	if (dr == NULL) {
+		return 404;
+	}
+
+	while (1) {
+		de = readdir(dr);
+		if (de == NULL) {
+			break;
+		}
+		char filepath[SIZE];
+		strcpy(filepath, buffer);
+		strcat(filepath, "/");
+		strcat(filepath, de->d_name);
+		int fd = open(filepath, O_RDONLY);
+		if (fd > -1) {
+			int newFd = open(de->d_name, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
+			if (newFd > -1) {
+				while (read(fd, body, SIZE) > 0) {
+					write(newFd, body, SIZE);
+				}
+				close(newFd);
+			}
+			close(fd);	
+		}
+	}
+
+	closedir(dr);
 }

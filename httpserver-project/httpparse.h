@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
+#include<dirent.h>
 
 #include "globalserverinfo.h"
 #include "servertools.h"
@@ -27,6 +28,7 @@ private:
 	char* filename;
 
 	int fd[3];
+	DIR* dr;
 	int bytesUsed[3];
 	int correctFileIndex;
 
@@ -35,6 +37,8 @@ private:
 	char* GetWord();
 	bool IsValidName(char*);
 	int SetupGetRequest();
+	int SetupGetListRequest();
+	int GetRecoveryActionTimestamp();
 public:	
 	char body[SIZE + 1];
 		
@@ -43,6 +47,7 @@ public:
 	int ParseRequestHeader(char*);
 	int PutAction(int);
 	int GetAction();
+	int GetListAction();
 	int GetRequestType();
 	int GetContentLength();
 	char* GetFilename();

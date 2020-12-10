@@ -778,14 +778,17 @@ int HTTPParse::SetupGetListRequest() {
 	int accumulator = 0;
 	char buffer[SIZE];
     while ((de = readdir(dir)) != NULL) {
+		memset(buffer, 0, sizeof buffer);
     	strncpy(buffer, de->d_name, 7);
 		buffer[9] = '\0';
 		std::cout << "[SetupGetListRequest]: " << de->d_name << "\n";
 		if (strcmp(buffer, "backup-") == 0) {
+			std::cout << "[SetupGetListRequest] Directory Name: " << de->d_name << "\n";
 			memset(buffer, 0, sizeof buffer);
 			strcpy(buffer, de->d_name + 7);
 			int nameLength = strlen(buffer);
 			accumulator += nameLength + 1;
+			std::cout << "[SetupGetListRequest] accumulator: " << accumulator << "\n";
 		}
 	}
   

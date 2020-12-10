@@ -72,14 +72,18 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	std::cout << "[HTTPParse] without slash: " << filename << '\n';	
 	bool isValidFunctionality = (strcmp(filename, "r") == 0 || strcmp(filename, "b") == 0 || strcmp(filename, "l") == 0);
 	std::cout << "[HTTPParse] isValidFunctionality " << isValidFunctionality<< '\n';
-	if (strlen(filename) != 10 &&  strlen(filename) != 1) {
-		std::cout << "size of filename" << strlen(filename) << '\n';
-		return 400;
-	}
 	
-	if (!isValidFunctionality) {
-		return 400;
-	}
+	if ((strlen(filename) != 10 &&  strlen(filename) != 1) && !isValidFunctionality) {
+                std::cout << "size of filename" << strlen(filename) << '\n';
+                return 400;
+        }
+
+        /*if (!isValidFunctionality) {
+                return 400;
+        }*/
+
+
+	
 	if (!IsValidName(filename)) {
 		return 400;
 	}

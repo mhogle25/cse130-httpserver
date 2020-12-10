@@ -115,6 +115,9 @@ int HTTPParse::ParseRequestHeader(char* r) {
 				char newFilename[SIZE];
 				strcpy(newFilename, filename);
 				memmove(newFilename, newFilename+2, strlen(newFilename));
+				if (strlen(newFilename) < 1) {
+					return 400;
+				}
 				long temp = atol(newFilename);
 				messageCode = HandleFolderRecovery(temp);
 			} else {

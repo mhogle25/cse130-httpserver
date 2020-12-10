@@ -52,6 +52,8 @@ public:
 	int HandleFolderRecovery(char*);
 	bool IsProgramFile(const char*);
 	long GetNewestBackup();
+	bool InBackupDirectory(const char*, const char*);
+
 };
 
 #endif

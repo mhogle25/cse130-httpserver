@@ -48,16 +48,13 @@ HTTPParse::~HTTPParse() {
 }
 
 int HTTPParse::ParseRequestHeader(char* r) {
-	std::cout << "[HTTPParse] header: " << r << '\n';
 	index = 0;
 	request = r;
 	requestLength = strlen(request);
 	
 	requestType = GetWord();
-	std::cout << "[HTTPParse] request type: " << requestType << '\n';
 
 	filename = GetWord();
-	std::cout << "[HTTPParse] filename: " << filename << '\n';
 	if (filename[0] == '/') {
 		memmove(filename, filename+1, strlen(filename));
 	} else {
@@ -84,7 +81,6 @@ int HTTPParse::ParseRequestHeader(char* r) {
 	}
 	
 	char* httpTitle = GetWord();
-	std::cout << "[HTTPParse] title: " << httpTitle << '\n';
 
 	if (strcmp(httpTitle, "HTTP/1.1") != 0) {
 		//ERROR, not an HTTP request, return error code
@@ -102,11 +98,8 @@ int HTTPParse::ParseRequestHeader(char* r) {
 
 		int messageCode;
 		if (strcmp(filename, "r") == 0) {
-			// call recovery function
-			std::cout << "[HTTPParse] inside r if statement " << r << '\n';
 			messageCode = HandleFolderRecoveryNewest();
 		} else if (strcmp(filename, "b") == 0) {
-			std::cout << "[HTTPParse] inside b if statement " << r << '\n';
 			messageCode = HandleBackups(filename);
 		} else if (strcmp(filename, "l") == 0) {
 			messageCode = SetupGetListRequest();
@@ -514,40 +507,27 @@ int HTTPParse::HandleBackups(char* filename) {
 	seconds = time(NULL);
 	// set folder name
 	std::string folderName = "backup-" + std::to_string(seconds);
-	std::cout << "[HTTPParse] folderName: " << folderName << '\n';
 	// create directory
 	const char * directory = folderName.c_str();
 	int checkCreatedDirectory = mkdir(directory,0777); 
-	std::cout << "[HTTPParse] created directory " << directory << '\n';
-	// for each file in the current directory
-		// set path name
-		// read and write to path name
-
-	struct dirent *directoryPointer;  // Pointer for directory entry 
+	struct dirent *directoryPointer;
   
-	// opendir() returns a pointer of DIR type.  
     DIR *openedSuccessfully = opendir("."); 
   
     if (openedSuccessfully == NULL) { 
-		std::cout << "[HTTPParse] couldn't open directory\n";
         return 500; 
 	} 
 
     while ((directoryPointer = readdir(openedSuccessfully)) != NULL) {
 		std::string file = directoryPointer->d_name;
 		const char * fileNameStr = file.c_str();
-		std::cout << "IsProgramFile" << fileNameStr << IsProgramFile(fileNameStr) << '\n';
 		if (!IsProgramFile(fileNameStr)) {
 			std::string file = directoryPointer->d_name;
-			std::cout << "[HTTPParse] file: " << file << '\n';
 			std::string pathnamestr = folderName + "/" + file;
-			std::cout << "[HTTPParse] pathName: " << pathnamestr << '\n';
 			const char * pathName = pathnamestr.c_str();
 
 			char b[15872];
             memset(b, 0, sizeof b);
-			// read from file 
-			// open the file
 			int fd = open(fileNameStr, O_RDONLY);
 			if (fd < 0) {
 				if (errno == EACCES) {
@@ -571,9 +551,6 @@ int HTTPParse::HandleBackups(char* filename) {
 							close(fd);
 							break;
 						}
-						// close(fd);
-						// std::cout << "fileBytesRead" << fileBytesRead << '\n';
-						// std::cout << "buffer" << b << '\n';
 						// write to pathname
 						int writtenSuccessfully = write(backupFd, b, fileBytesRead);
 						if (writtenSuccessfully < 0) {
@@ -615,25 +592,20 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 	struct dirent *directoryPointer;
     DIR *openedSuccessfully = opendir("."); 
     if (openedSuccessfully == NULL) { 
-		std::cout << "[HTTPParse] couldn't open directory\n";
         return 500; 
 	}
 	// for each file in most recent backup folder
     while ((directoryPointer = readdir(openedSuccessfully)) != NULL) {
 		std::string fileNameStr = directoryPointer->d_name;
 		const char * file = fileNameStr.c_str();
-		std::cout << "[HTTPParse HandleFolderRecovery] file: " << file << '\n';
 		std::string pathnamestr = backupFolderNameStr + "/" + file;
-		std::cout << "[HTTPParse] pathName: " << pathnamestr << '\n';
 		const char * pathName = pathnamestr.c_str();
-		std::cout << "[HTTPParse] val of InBackupDirectory: " << InBackupDirectory(file, backupFolderName) << '\n';
 
-		if (!IsProgramFile(file) && InBackupDirectory(file, backupFolderName)) { // if is not program file and is in backup directory
+		if (!IsProgramFile(file) && InBackupDirectory(file, backupFolderName)) {
 
 			char b[15872];
             memset(b, 0, sizeof b);
-			// read from file 
-			// open the file
+
 			int bfd = open(pathName, O_RDONLY);
 			if (bfd < 0) {
 				if (errno == EACCES) {
@@ -644,7 +616,6 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 					// break;
 				}
 			} else {
-				// open the backup and write to the file
 				int fd = open(file, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
 				if (fd < 0) {
 					warn("error opening backup file %s", file);
@@ -658,9 +629,6 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 							close(bfd);
 							break;
 						}
-						// close(fd);
-						// std::cout << "fileBytesRead" << fileBytesRead << '\n';
-						// std::cout << "buffer" << b << '\n';
 						// write to pathname
 						int writtenSuccessfully = write(fd, b, fileBytesRead);
 						if (writtenSuccessfully < 0) {
@@ -683,7 +651,6 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 bool HTTPParse::FolderHasPermissions(const char * backup) {
 	DIR *openedSuccessfully = opendir(backup); 
     if (openedSuccessfully == NULL) { 
-		std::cout << "[HTTPParse] couldn't open directory\n";
         return false; 
 	}
     closedir(openedSuccessfully);
@@ -691,7 +658,6 @@ bool HTTPParse::FolderHasPermissions(const char * backup) {
 }
 
 bool HTTPParse::IsProgramFile(const char * f) {
-	std::cout << "[HTPParse IsProgramFile] files" << f << '\n';
 	for (int i = 0; i < 27; i++) {
 		if (strcmp(ignore[i], f) == 0) {
 			return true;
@@ -700,7 +666,6 @@ bool HTTPParse::IsProgramFile(const char * f) {
 	const char * isBackupFolder;
 	isBackupFolder = strstr (f,"backup-");
 	if (isBackupFolder != NULL) {
-		std::cout << "is backup folder\n";
 			return true;
 	}
 
@@ -713,7 +678,6 @@ bool HTTPParse::InBackupDirectory(const char * f, const char * folder) {
 	DIR *openedSuccessfully = opendir(folder); 
   
     if (openedSuccessfully == NULL) { 
-		std::cout << "[HTTPParse] couldn't open directory\n";
         return 0; 
 	} 
 	std::string fileStr = directoryPointer->d_name;
@@ -732,13 +696,10 @@ long HTTPParse::GetNewestBackup() {
 	// would be the max
 	long newestBackup = 0;
 
-	struct dirent *directoryPointer;  // Pointer for directory entry 
-  
-	// opendir() returns a pointer of DIR type.  
+	struct dirent *directoryPointer;
     DIR *openedSuccessfully = opendir("."); 
   
     if (openedSuccessfully == NULL) { 
-		std::cout << "[HTTPParse] couldn't open directory\n";
         return 0; 
 	} 
 
@@ -748,13 +709,8 @@ long HTTPParse::GetNewestBackup() {
 		const char * isBackupFolder;
 		isBackupFolder = strstr (file,"backup-");
 		if (isBackupFolder != NULL) {
-			std::string str2 = fileStr.substr (7, strlen(file));
-			std::cout << "[HTTPParse get newest backup]\n";
-			std::cout << "backup name: " << fileStr << '\n';
-			std::cout << "substring" << str2 << '\n';
-			// convert to long
-			long temp = atol(str2.c_str());
-			std::cout << "substring to long\n";
+			std::string substr = fileStr.substr (7, strlen(file));
+			long temp = atol(substr.c_str());
 			if (temp > newestBackup) {
 				newestBackup = temp;
 			}
@@ -764,12 +720,10 @@ long HTTPParse::GetNewestBackup() {
 }
 
 int HTTPParse::SetupGetListRequest() {
-	struct dirent *de;  // Pointer for directory entry 
+	struct dirent *de;
+    DIR *openedSuccessfully = opendir("."); 
   
-    // opendir() returns a pointer of DIR type.  
-    DIR *dir = opendir("."); 
-  
-    if (dir == NULL)
+    if (openedSuccessfully == NULL)
     { 
         warn("opendir()");
         return 500; 
@@ -777,22 +731,19 @@ int HTTPParse::SetupGetListRequest() {
 
 	int accumulator = 0;
 	char buffer[SIZE];
-    while ((de = readdir(dir)) != NULL) {
+    while ((de = readdir(openedSuccessfully)) != NULL) {
 		memset(buffer, 0, sizeof buffer);
     	strncpy(buffer, de->d_name, 7);
 		buffer[9] = '\0';
-		std::cout << "[SetupGetListRequest]: " << de->d_name << "\n";
 		if (strcmp(buffer, "backup-") == 0) {
-			std::cout << "[SetupGetListRequest] Directory Name: " << de->d_name << "\n";
 			memset(buffer, 0, sizeof buffer);
 			strcpy(buffer, de->d_name + 7);
 			int nameLength = strlen(buffer);
 			accumulator += nameLength + 1;
-			std::cout << "[SetupGetListRequest] accumulator: " << accumulator << "\n";
 		}
 	}
   
-    closedir(dir);
+    closedir(openedSuccessfully);
 
 	contentLength = accumulator;
 
@@ -800,9 +751,8 @@ int HTTPParse::SetupGetListRequest() {
 }
 
 int HTTPParse::GetListAction() {
-	struct dirent *de;  // Pointer for directory entry 
+	struct dirent *de;
 	if (dr == NULL) {
-		// opendir() returns a pointer of DIR type.  
 		dr = opendir("."); 
 	
 		if (dr == NULL)

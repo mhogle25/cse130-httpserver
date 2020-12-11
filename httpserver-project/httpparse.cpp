@@ -654,8 +654,13 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 
 int HTTPParse::FolderHasPermissions(const char * backup) {
 	DIR *openedSuccessfully = opendir(backup); 
-    if (openedSuccessfully == NULL) { 
-        return false; 
+    if (openedSuccessfully) {
+		closedir(openedSuccessfully);
+		return 0;
+	} else if (ENOENT == errno) {
+		return 1;
+	} else {
+		return 2;
 	}
 }
 

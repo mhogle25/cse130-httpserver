@@ -608,7 +608,11 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 	std::string backupFolderNameStr = "backup-" + std::to_string(newestBackupTime);
 	const char * backupFolderName = backupFolderNameStr.c_str();
 	
-	if (!FolderHasPermissions(backupFolderName)) {
+	if (FolderHasPermissions(backupFolderName) == 1) {
+		return 404;
+	}
+
+	if (FolderHasPermissions(backupFolderName) == 2) {
 		return 403;
 	}
 	
@@ -680,14 +684,16 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 	return 200;
 }
 
-bool HTTPParse::FolderHasPermissions(const char * backup) {
+int HTTPParse::FolderHasPermissions(const char * backup) {
 	DIR *openedSuccessfully = opendir(backup); 
-    if (openedSuccessfully == NULL) { 
-		std::cout << "[HTTPParse] couldn't open directory\n";
-        return false; 
+    if (openedSuccessfully) {
+		closedir(openedSuccessfully);
+		return 0;
+	} else if (ENOENT == errno) {
+		return 1;
+	} else {
+		return 2;
 	}
-    closedir(openedSuccessfully);
-	return true;
 }
 
 bool HTTPParse::IsProgramFile(const char * f) {

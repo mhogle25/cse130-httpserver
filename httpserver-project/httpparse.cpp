@@ -645,10 +645,62 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 				close(fd);
 
 			}
-
 		}
 	}
     closedir(openedSuccessfully);
+
+	DIR *openedSuccessfully = opendir(backupFolderName); 
+    if (openedSuccessfully == NULL) { 
+        return 500; 
+	}
+	// for each file in most recent backup folder
+    while ((directoryPointer = readdir(openedSuccessfully)) != NULL) {
+		std::string backupFileStr = directoryPointer->d_name;
+        const char * backupFile = backupFileStr.c_str();
+        std::string pathnamestr = "../" + backupFileStr;
+        const char * pathName = pathnamestr.c_str();
+		if (FileNotInServer(backupFile)){
+			char b[15872];
+            memset(b, 0, sizeof b);
+
+			int bfd = open(backupFile, O_RDONLY);
+			if (bfd < 0) {
+				if (errno == EACCES) {
+					warn("403 %s", backupFile);
+					// break;
+				} else {
+					warn("404 %s", backupFile);
+					// break;
+				}
+			} else {
+				int fd = open(pathName, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
+				if (fd < 0) {
+					warn("error opening backup file %s", pathName);
+				} else {
+					int fileBytesRead = 1;
+					while (fileBytesRead != 0) {
+						// check if 403 and if its not then continue w this stuff
+						fileBytesRead = read(bfd, b, sizeof b);
+						if (fileBytesRead < 0){
+							warn("%s", "read()");
+							close(bfd);
+							break;
+						}
+						// write to pathname
+						int writtenSuccessfully = write(fd, b, fileBytesRead);
+						if (writtenSuccessfully < 0) {
+							warn("%s", "write()");
+							break;
+						}
+					}
+				}
+				close(bfd);
+				close(fd);
+
+			}
+		}
+	}
+	closedir(openedSuccessfully);
 	return 200;
 }
 
@@ -679,6 +731,23 @@ bool HTTPParse::IsProgramFile(const char * f) {
 	return false;
 }
 
+bool HTTPParse::FileNotInServer(const char * f) {
+	struct dirent *directoryPointer; 
+	DIR *openedSuccessfully = opendir("."); 
+  
+    if (openedSuccessfully == NULL) { 
+        return 0; 
+	} 
+	std::string fileStr = directoryPointer->d_name;
+    while ((directoryPointer = readdir(openedSuccessfully)) != NULL) {
+		std::string fileStr = directoryPointer->d_name;
+		const char * file = fileStr.c_str();
+		if (strcmp(f, file) == 0) {
+			return false;
+		}
+	}
+	return true;
+}
 
 bool HTTPParse::InBackupDirectory(const char * f, const char * folder) {
 	struct dirent *directoryPointer; 

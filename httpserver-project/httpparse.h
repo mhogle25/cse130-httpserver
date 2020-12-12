@@ -62,6 +62,7 @@ public:
 	long GetNewestBackup();
 	bool InBackupDirectory(const char*, const char*);
 	int FolderHasPermissions(const char *);
+	bool FileNotInServer(const char*);
 
 };
 

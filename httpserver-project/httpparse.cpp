@@ -581,83 +581,26 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 		strcat(buffer, "/");
 		strcat(buffer, backupDirent->d_name);
 		int backupFD = open(buffer, O_RDONLY);
-		int serverFD = open(backupDirent->d_name, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
-		while (1) {
-			memset(buffer, 0, sizeof buffer);
-			int readSize = read(backupFD, buffer, SIZE);
-			if (readSize < 1) {
-				break;
-			}
-			int writeSize = write(serverFD, buffer, readSize);
-			if (writeSize != readSize) {
-				//return 500;
-			}
-
-
-		}
-		close(backupFD);
-		close(serverFD);
-	}
-
-	/*
-	struct dirent *directoryPointer;
-    DIR *openedSuccessfully = opendir("."); 
-    if (openedSuccessfully == NULL) { 
-        return 500; 
-	}
-	// for each file in most recent backup folder
-    while ((directoryPointer = readdir(openedSuccessfully)) != NULL) {
-		std::string fileNameStr = directoryPointer->d_name;
-		const char * file = fileNameStr.c_str();
-		std::string pathnamestr = backupFolderNameStr + "/" + file;
-		const char * pathName = pathnamestr.c_str();
-
-		if (!IsProgramFile(file) && InBackupDirectory(file, backupFolderName)) {
-
-			char b[15872];
-            memset(b, 0, sizeof b);
-
-			int bfd = open(pathName, O_RDONLY);
-			if (bfd < 0) {
-				if (errno == EACCES) {
-					warn("403 %s", pathName);
-					// break;
-				} else {
-					warn("404 %s", pathName);
-					// break;
-				}
-			} else {
-				int fd = open(file, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
-				if (fd < 0) {
-					warn("error opening backup file %s", file);
-				} else {
-					int fileBytesRead = 1;
-					while (fileBytesRead != 0) {
-						// check if 403 and if its not then continue w this stuff
-						fileBytesRead = read(bfd, b, sizeof b);
-						if (fileBytesRead < 0){
-							warn("%s", "read()");
-							close(bfd);
-							break;
-						}
-						// write to pathname
-						int writtenSuccessfully = write(fd, b, fileBytesRead);
-						if (writtenSuccessfully < 0) {
-							warn("%s", "write()");
-							break;
-						}
+		if (backupFD > -1) {
+			int serverFD = open(backupDirent->d_name, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
+			if (serverFD > -1) {
+				while (1) {
+					memset(buffer, 0, sizeof buffer);
+					int readSize = read(backupFD, buffer, SIZE);
+					if (readSize < 1) {
+						break;
+					}
+					int writeSize = write(serverFD, buffer, readSize);
+					if (writeSize != readSize) {
+						//return 500;
 					}
 				}
-				close(bfd);
-				close(fd);
-
+				close(serverFD);
 			}
-
+			close(backupFD);
 		}
 	}
-    closedir(openedSuccessfully);
 
-	*/
 	return 200;
 }
 
@@ -674,9 +617,11 @@ int HTTPParse::FolderHasPermissions(const char * backup) {
 }
 
 bool HTTPParse::IsProgramFile(const char * f) {
-	if (!IsValidName((char*)f)) {
+	char* fname = strdup(f);
+	if (!IsValidName(fname)) {
 		return true;
 	}
+	free(fname);
 
 	const char * isBackupFolder;
 	isBackupFolder = strstr (f,"backup-");

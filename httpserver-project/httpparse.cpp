@@ -12,34 +12,6 @@ HTTPParse::HTTPParse() {
 		bytesUsed[i] = 0;
 	}
 	correctFileIndex = 0;
-
-	ignore[0] = "DESIGN.pdf";
-	ignore[1] = "globalserverinfo.cpp";
-	ignore[2] = "globalserverinfo.h";
-	ignore[3] = "globalserverinfo.o";
-	ignore[4] = "httpparse.cpp";
-	ignore[5] = "httpparse.h";
-	ignore[6] = "httpparse.o";
-	ignore[7] = "httpserver";
-	ignore[8] = "main.cpp";
-	ignore[9] = "main.o";
-	ignore[10] = "Makefile";
-	ignore[11] = "README.md";
-	ignore[12] = "serverconnection.cpp";
-	ignore[13] = "serverconnection.h";
-	ignore[14] = "serverconnection.o";
-	ignore[15] = "servermanager.cpp";
-	ignore[16] = "servermanager.h";
-	ignore[17] = "servermanager.o";
-	ignore[18] = "servertools.cpp";
-	ignore[19] = "servertools.h";
-	ignore[20] = "servertools.o";
-	ignore[21] = ".";
-	ignore[22] = "..";
-	ignore[23] = "client";
-	ignore[24] = "copy1";
-	ignore[25] = "copy2";
-	ignore[26] = "copy3";
 }
 
 HTTPParse::~HTTPParse() {
@@ -486,7 +458,11 @@ char* HTTPParse::GetFilename() {
 }
 
 bool HTTPParse::IsValidName(char* filename) {
-        for (unsigned long i = 0; i < strlen(filename); i++) {
+	if (strlen(filename) != 10) {
+		return false;
+	}
+
+    for (unsigned long i = 0; i < strlen(filename); i++) {
         if (isalpha(filename[i]) || isdigit(filename[i])){
             int num = (int)filename[i] - '0'; // look at ascii chart otherwise 0 turns into 48
             if (isdigit(filename[i])) {
@@ -593,6 +569,37 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 		return 403;
 	}
 	
+	struct dirent *backupDirent;
+	DIR* backupFolder = opendir(backupFolderName);
+	if (backupFolder == NULL) {
+		return 500;
+	}
+	
+	while ((backupDirent = readdir(backupFolder)) != NULL) {
+		char buffer[SIZE];
+		strcpy(buffer, backupFolderName);
+		strcat(buffer, "/");
+		strcat(buffer, backupDirent->d_name);
+		int backupFD = open(buffer, O_RDONLY);
+		int serverFD = open(backupDirent->d_name, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU);
+		while (1) {
+			memset(buffer, 0, sizeof buffer);
+			int readSize = read(backupFD, buffer, SIZE);
+			if (readSize < 1) {
+				break;
+			}
+			int writeSize = write(serverFD, buffer, readSize);
+			if (writeSize != readSize) {
+				//return 500;
+			}
+
+
+		}
+		close(backupFD);
+		close(serverFD);
+	}
+
+	/*
 	struct dirent *directoryPointer;
     DIR *openedSuccessfully = opendir("."); 
     if (openedSuccessfully == NULL) { 
@@ -649,6 +656,8 @@ int HTTPParse::HandleFolderRecovery(long newestBackupTime) {
 		}
 	}
     closedir(openedSuccessfully);
+
+	*/
 	return 200;
 }
 
@@ -665,11 +674,10 @@ int HTTPParse::FolderHasPermissions(const char * backup) {
 }
 
 bool HTTPParse::IsProgramFile(const char * f) {
-	for (int i = 0; i < 27; i++) {
-		if (strcmp(ignore[i], f) == 0) {
-			return true;
-		}
+	if (!IsValidName((char*)f)) {
+		return true;
 	}
+
 	const char * isBackupFolder;
 	isBackupFolder = strstr (f,"backup-");
 	if (isBackupFolder != NULL) {

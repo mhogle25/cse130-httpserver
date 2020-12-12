@@ -36,8 +36,6 @@ private:
 	DIR* dr;
 	int bytesUsed[3];
 	int correctFileIndex;
-
-	const char* ignore[27];
 	
 	char* GetWord();
 	bool IsValidName(char*);
